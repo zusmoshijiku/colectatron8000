@@ -1,13 +1,6 @@
 # colectatron8000
 
-**Volunteer shift scheduler for fundraising collections.**
-
-colectatron8000 is an operations research optimization tool that assigns
-volunteers to street corners across multiple dates and time slots for a
-fundraising collection. It uses a [Gurobi](https://www.gurobi.com/) integer
-programming model to respect volunteer availability, per-location time-block
-capacities, and individual shift limits (minimum and maximum number of shifts
-per volunteer).
+El colectatron8000 asigna turnos de colecta a partir de las respuestas del formulario. 
 
 ## Project structure
 

@@ -1,153 +1,56 @@
-"""
-main.py
-~~~~~~~
-Entry point for the colectatron8000 volunteer shift scheduler.
-
-Usage
------
-python src/main.py \\
-    --availability  data/availability.csv \\
-    --capacities    data/capacities.csv \\
-    --output        data/assignments.csv \\
-    [--limits       data/volunteer_limits.csv] \\
-    [--min-shifts   1] \\
-    [--max-shifts   3] \\
-    [--time-limit   300] \\
-    [--mip-gap      0.01]
-"""
-
 from __future__ import annotations
 
-import argparse
-import pathlib
-import sys
+from pathlib import Path
+
+from data_processing import procesar_disponibilidad
+from solver import (
+	build_schedule_dataframe,
+	export_schedule,
+	get_mock_corner_data,
+	solve_volunteer_assignment,
+)
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "colectatron8000 – assign volunteers to fundraising collection shifts "
-            "using an integer-programming model (Gurobi)."
-        )
-    )
-    parser.add_argument(
-        "--availability",
-        required=True,
-        metavar="FILE",
-        help="Path to the volunteer availability CSV or Excel file.",
-    )
-    parser.add_argument(
-        "--capacities",
-        required=True,
-        metavar="FILE",
-        help="Path to the location capacities CSV or Excel file.",
-    )
-    parser.add_argument(
-        "--output",
-        default="data/assignments.csv",
-        metavar="FILE",
-        help="Path for the output assignments CSV (default: data/assignments.csv).",
-    )
-    parser.add_argument(
-        "--limits",
-        default=None,
-        metavar="FILE",
-        help="Optional path to a per-volunteer shift limits CSV or Excel file.",
-    )
-    parser.add_argument(
-        "--min-shifts",
-        type=int,
-        default=1,
-        metavar="N",
-        help="Default minimum number of shifts per volunteer (default: 1).",
-    )
-    parser.add_argument(
-        "--max-shifts",
-        type=int,
-        default=3,
-        metavar="N",
-        help="Default maximum number of shifts per volunteer (default: 3).",
-    )
-    parser.add_argument(
-        "--time-limit",
-        type=float,
-        default=300.0,
-        metavar="SECS",
-        help="Gurobi solver time limit in seconds (default: 300).",
-    )
-    parser.add_argument(
-        "--mip-gap",
-        type=float,
-        default=0.01,
-        metavar="GAP",
-        help="Relative MIP optimality gap tolerance (default: 0.01).",
-    )
-    return parser.parse_args(argv)
+def main() -> None:
+	
+	input_path = Path("data/data1.csv")
 
+	col_id = "Voluntario"
+	col_horarios = "Horarios"
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+	V, H, D, mapa_horarios = procesar_disponibilidad(
+		str(input_path), col_id, col_horarios
+	)
 
-    # Lazy imports so argument errors are reported before heavy imports
-    from data_processing import build_problem_data  # noqa: PLC0415
-    from solver import build_and_solve  # noqa: PLC0415
+	E, C, min_turnos, max_turnos = get_mock_corner_data()
 
-    print("=== colectatron8000 ===")
-    print(f"Availability : {args.availability}")
-    print(f"Capacities   : {args.capacities}")
-    print(f"Limits       : {args.limits or '(none – using defaults)'}")
-    print(f"Min shifts   : {args.min_shifts}")
-    print(f"Max shifts   : {args.max_shifts}")
-    print()
+	model, x = solve_volunteer_assignment(
+		V=V,
+		H=H,
+		D=D,
+		E=E,
+		C=C,
+		min_turnos=min_turnos,
+		max_turnos=max_turnos,
+	)
 
-    # ------------------------------------------------------------------
-    # 1. Load data
-    # ------------------------------------------------------------------
-    print("Loading data...")
-    problem = build_problem_data(
-        availability_path=args.availability,
-        capacities_path=args.capacities,
-        limits_path=args.limits,
-        default_min_shifts=args.min_shifts,
-        default_max_shifts=args.max_shifts,
-    )
+	reverse_slot_map = {idx: label for label, idx in mapa_horarios.items()}
+	slot_labels = [reverse_slot_map[h] for h in H]
 
-    print(f"  Volunteers : {len(problem['volunteers'])}")
-    print(f"  Blocks     : {len(problem['blocks'])}")
+	schedule_df = build_schedule_dataframe(
+		model=model,
+		x=x,
+		V=V,
+		E=E,
+		H=H,
+		slot_labels=slot_labels,
+	)
 
-    # ------------------------------------------------------------------
-    # 2. Solve
-    # ------------------------------------------------------------------
-    print("\nSolving...")
-    assignments = build_and_solve(
-        availability=problem["availability"],
-        capacities=problem["capacities"],
-        volunteers=problem["volunteers"],
-        blocks=problem["blocks"],
-        volunteer_min=problem["volunteer_min"],
-        volunteer_max=problem["volunteer_max"],
-        time_limit=args.time_limit,
-        mip_gap=args.mip_gap,
-    )
+	output_path = Path("data/cronograma_final.csv")
+	export_schedule(schedule_df, str(output_path))
 
-    if assignments.empty:
-        print("\nNo assignments produced – check solver output above.")
-        return 1
-
-    # ------------------------------------------------------------------
-    # 3. Export
-    # ------------------------------------------------------------------
-    output_path = pathlib.Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    assignments.to_csv(output_path, index=False)
-
-    print(f"\nAssignments written to: {output_path}")
-    print(f"Total shifts assigned : {len(assignments)}")
-    print("\nSample output (first 10 rows):")
-    print(assignments.head(10).to_string(index=False))
-
-    return 0
+	print(f"Se exporto el cronograma con {len(schedule_df)} asignaciones en: {output_path}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+	main()

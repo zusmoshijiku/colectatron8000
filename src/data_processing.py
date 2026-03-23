@@ -1,184 +1,156 @@
-"""
-data_processing.py
-~~~~~~~~~~~~~~~~~~
-Parse volunteer availability and location capacities from CSV or Excel files.
-
-Expected input schemas
-----------------------
-availability file
-    volunteer : str  – unique volunteer identifier
-    date      : str  – YYYY-MM-DD
-    slot      : str  – time-slot label (e.g. "morning", "afternoon")
-    location  : str  – street corner / collection-point identifier
-
-capacities file
-    location  : str
-    date      : str
-    slot      : str
-    capacity  : int  – max volunteers allowed in this block
-
-volunteer_limits file  (optional)
-    volunteer : str
-    min_shifts: int
-    max_shifts: int
-"""
-
 from __future__ import annotations
 
-import pathlib
-from typing import Optional
+import re
+import unicodedata
 
-import numpy as np
 import pandas as pd
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _read_file(path: str | pathlib.Path) -> pd.DataFrame:
-    """Read a CSV or Excel file into a DataFrame."""
-    path = pathlib.Path(path)
-    suffix = path.suffix.lower()
-    if suffix in {".xlsx", ".xls"}:
-        return pd.read_excel(path)
-    if suffix == ".csv":
-        return pd.read_csv(path)
-    raise ValueError(f"Unsupported file type: {suffix!r}. Use .csv or .xlsx/.xls.")
+def _leer_tabla(ruta_archivo: str) -> pd.DataFrame:
+    ruta = str(ruta_archivo).lower()
+    if ruta.endswith(".xlsx") or ruta.endswith(".xls"):
+        return pd.read_excel(ruta_archivo)
+    # sep=None lets pandas infer delimiters such as ';' from Google Forms exports.
+    return pd.read_csv(ruta_archivo, sep=None, engine="python")
 
 
-def _validate_columns(df: pd.DataFrame, required: list[str], source: str) -> None:
-    missing = [c for c in required if c not in df.columns]
-    if missing:
+def _normalizar_nombre_columna(nombre: str) -> str:
+    return str(nombre).strip().lower().replace("_", " ")
+
+
+def _clave_texto(texto: str) -> str:
+    texto = unicodedata.normalize("NFKD", str(texto))
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    texto = texto.lower()
+    texto = re.sub(r"[^a-z0-9 ]+", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()
+
+
+def _es_si(valor: object) -> bool:
+    clave = _clave_texto(valor)
+    return "si" in clave or "s" == clave
+
+
+def _split_horarios(texto: object) -> list[str]:
+    if pd.isna(texto):
+        return []
+    partes = [p.strip() for p in re.split(r"\s*,\s*", str(texto)) if p.strip()]
+    # Keep likely time slots and ignore generic sentences.
+    return [p for p in partes if ":" in p and "-" in p]
+
+
+def _detectar_columna_id(df: pd.DataFrame, col_id_objetivo: str) -> str | None:
+    if col_id_objetivo in df.columns:
+        return col_id_objetivo
+
+    candidatos = {
+        "voluntario",
+        "volunteer",
+        "nombre",
+        "name",
+        "id",
+        "legajo",
+    }
+    for c in df.columns:
+        if _clave_texto(c) in candidatos:
+            return c
+    return None
+
+
+def _detectar_columna_confirmacion(df: pd.DataFrame) -> str | None:
+    for c in df.columns:
+        clave = _clave_texto(c)
+        if "puedes ir a la colecta" in clave:
+            return c
+    return None
+
+
+def _columnas_horarios(df: pd.DataFrame, col_horarios_objetivo: str) -> list[str]:
+    if col_horarios_objetivo in df.columns:
+        return [col_horarios_objetivo]
+
+    columnas = []
+    for c in df.columns:
+        clave = _clave_texto(c)
+        if "horario te acomoda" in clave or "horarios" in clave or "horario" in clave:
+            columnas.append(c)
+    return columnas
+
+
+def _renombrar_columnas_entrada(
+    df: pd.DataFrame,
+    col_id_objetivo: str,
+    col_horarios_objetivo: str,
+) -> pd.DataFrame:
+    """Map input schema to canonical columns and build Horarios when split in many columns."""
+    col_id_detectada = _detectar_columna_id(df, col_id_objetivo)
+    if col_id_detectada is None:
         raise ValueError(
-            f"File '{source}' is missing required column(s): {missing}"
+            "No se encontro una columna de identificador de voluntario. "
+            f"Columnas disponibles: {list(df.columns)}"
         )
 
+    if col_id_detectada != col_id_objetivo:
+        df = df.rename(columns={col_id_detectada: col_id_objetivo})
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+    columnas_horarios = _columnas_horarios(df, col_horarios_objetivo)
+    if not columnas_horarios:
+        raise ValueError(
+            "No se encontro ninguna columna de horarios. "
+            f"Columnas disponibles: {list(df.columns)}"
+        )
 
-def load_availability(path: str | pathlib.Path) -> pd.DataFrame:
-    """Return a tidy DataFrame of volunteer availability.
+    if col_horarios_objetivo not in df.columns:
+        df[col_horarios_objetivo] = ""
 
-    Each row represents one (volunteer, date, slot, location) combination
-    where the volunteer is available and willing to work.
+    # Keep only volunteers who confirmed attendance when the field exists.
+    col_confirmacion = _detectar_columna_confirmacion(df)
+    if col_confirmacion is not None:
+        df = df[df[col_confirmacion].apply(_es_si)].copy()
 
-    Returns
-    -------
-    pd.DataFrame with columns: volunteer, date, slot, location
-    """
-    required = ["volunteer", "date", "slot", "location"]
-    df = _read_file(path)
-    _validate_columns(df, required, str(path))
-    df = df[required].copy()
-    df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
-    df = df.drop_duplicates()
-    return df.reset_index(drop=True)
-
-
-def load_capacities(path: str | pathlib.Path) -> pd.DataFrame:
-    """Return a tidy DataFrame of location capacities.
-
-    Each row represents one (location, date, slot) time-block with its
-    maximum volunteer capacity.
-
-    Returns
-    -------
-    pd.DataFrame with columns: location, date, slot, capacity
-    """
-    required = ["location", "date", "slot", "capacity"]
-    df = _read_file(path)
-    _validate_columns(df, required, str(path))
-    df = df[required].copy()
-    df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
-    df["capacity"] = df["capacity"].astype(int)
-    df = df.drop_duplicates(subset=["location", "date", "slot"])
-    return df.reset_index(drop=True)
-
-
-def load_volunteer_limits(
-    path: str | pathlib.Path,
-) -> pd.DataFrame:
-    """Return per-volunteer shift limits.
-
-    Returns
-    -------
-    pd.DataFrame with columns: volunteer, min_shifts, max_shifts
-    """
-    required = ["volunteer", "min_shifts", "max_shifts"]
-    df = _read_file(path)
-    _validate_columns(df, required, str(path))
-    df = df[required].copy()
-    df["min_shifts"] = df["min_shifts"].astype(int)
-    df["max_shifts"] = df["max_shifts"].astype(int)
-    return df.reset_index(drop=True)
-
-
-def build_problem_data(
-    availability_path: str | pathlib.Path,
-    capacities_path: str | pathlib.Path,
-    limits_path: Optional[str | pathlib.Path] = None,
-    default_min_shifts: int = 1,
-    default_max_shifts: int = 3,
-) -> dict:
-    """Load and combine all inputs into a single problem-data dictionary.
-
-    Parameters
-    ----------
-    availability_path  : path to the availability file
-    capacities_path    : path to the capacities file
-    limits_path        : optional path to the per-volunteer limits file
-    default_min_shifts : fallback minimum shifts per volunteer
-    default_max_shifts : fallback maximum shifts per volunteer
-
-    Returns
-    -------
-    dict with keys:
-        availability   – pd.DataFrame (volunteer, date, slot, location)
-        capacities     – pd.DataFrame (location, date, slot, capacity)
-        volunteers     – sorted list of unique volunteer IDs
-        blocks         – sorted list of (date, slot, location) tuples
-        volunteer_min  – dict {volunteer: int}
-        volunteer_max  – dict {volunteer: int}
-    """
-    availability = load_availability(availability_path)
-    capacities = load_capacities(capacities_path)
-
-    volunteers = sorted(availability["volunteer"].unique().tolist())
-
-    # Build the set of (date, slot, location) blocks from availability
-    blocks = sorted(
-        availability[["date", "slot", "location"]]
-        .drop_duplicates()
-        .itertuples(index=False, name=None)
+    df[col_horarios_objetivo] = df[columnas_horarios].fillna("").astype(str).agg(
+        ", ".join, axis=1
     )
 
-    # Per-volunteer shift limits
-    if limits_path is not None:
-        limits_df = load_volunteer_limits(limits_path)
-        limits_map = {
-            row.volunteer: (row.min_shifts, row.max_shifts)
-            for row in limits_df.itertuples(index=False)
-        }
-    else:
-        limits_map = {}
+    return df
 
-    volunteer_min = {
-        v: limits_map.get(v, (default_min_shifts, default_max_shifts))[0]
-        for v in volunteers
-    }
-    volunteer_max = {
-        v: limits_map.get(v, (default_min_shifts, default_max_shifts))[1]
-        for v in volunteers
-    }
 
-    return {
-        "availability": availability,
-        "capacities": capacities,
-        "volunteers": volunteers,
-        "blocks": blocks,
-        "volunteer_min": volunteer_min,
-        "volunteer_max": volunteer_max,
-    }
+def procesar_disponibilidad(ruta_archivo, col_id, col_horarios):
+    df = _leer_tabla(ruta_archivo)
+    df = _renombrar_columnas_entrada(df, col_id, col_horarios)
+
+    V = []
+
+    # Extraer todos los bloques horarios únicos
+    horarios_unicos = set()
+    for respuestas in df[col_horarios].dropna():
+        for h in _split_horarios(respuestas):
+            horarios_unicos.add(h)
+
+    H_nombres = sorted(horarios_unicos)
+    H = list(range(len(H_nombres)))
+    mapa_horarios = {nombre: i for i, nombre in enumerate(H_nombres)}
+
+    # Construir matriz D[v][h]
+    D = {}
+    for _, fila in df.iterrows():
+        v = fila[col_id]
+        if pd.isna(v):
+            continue
+
+        id_vol = str(v).strip()
+        if not id_vol:
+            continue
+
+        if id_vol not in D:
+            D[id_vol] = [0] * len(H)
+
+        for h in _split_horarios(fila[col_horarios]):
+            if h in mapa_horarios:
+                D[id_vol][mapa_horarios[h]] = 1
+
+    # Keep only volunteers with at least one available slot to avoid trivial infeasibilities.
+    V = [v for v, disp in D.items() if sum(disp) > 0]
+    D = {v: D[v] for v in V}
+
+    return V, H, D, mapa_horarios
