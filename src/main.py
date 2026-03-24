@@ -1,56 +1,43 @@
-from __future__ import annotations
+import argparse
+import pathlib
+import sys
 
-from pathlib import Path
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--respuestas", default="data/data2.csv", help="Ruta al archivo CSV o Excel del formulario.")
+    parser.add_argument("--esquinas", default="data/esquinas.csv", help="Ruta al archivo CSV con las esquinas (columna 'location').")
+    parser.add_argument("--output", default="data/assignments.csv", help="Ruta de salida.")
+    parser.add_argument("--time-limit", type=float, default=300.0)
+    parser.add_argument("--mip-gap", type=float, default=0.01)
+    return parser.parse_args(argv)
 
-from data_processing import procesar_disponibilidad
-from solver import (
-	build_schedule_dataframe,
-	export_schedule,
-	get_mock_corner_data,
-	solve_volunteer_assignment,
-)
+def main(argv=None):
+    args = parse_args(argv)
+    from data_processing import build_problem_data
+    from solver import build_and_solve
 
+    problem = build_problem_data(args.respuestas, args.esquinas)
 
-def main() -> None:
-	
-	input_path = Path("data/data1.csv")
+    assignments = build_and_solve(
+        availability=problem["availability"],
+        volunteers=problem["volunteers"],
+        blocks=problem["blocks"],
+        volunteer_max=problem["volunteer_max"],
+        all_locations=problem["all_locations"],
+        time_limit=args.time_limit,
+        mip_gap=args.mip_gap,
+    )
 
-	col_id = "Voluntario"
-	col_horarios = "Horarios"
+    if assignments.empty:
+        print("No se encontraron asignaciones factibles.")
+        return 1
 
-	V, H, D, mapa_horarios = procesar_disponibilidad(
-		str(input_path), col_id, col_horarios
-	)
+    output_path = pathlib.Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    assignments.to_csv(output_path, index=False)
+    print(f"Asignaciones guardadas en {output_path}")
 
-	E, C, min_turnos, max_turnos = get_mock_corner_data()
-
-	model, x = solve_volunteer_assignment(
-		V=V,
-		H=H,
-		D=D,
-		E=E,
-		C=C,
-		min_turnos=min_turnos,
-		max_turnos=max_turnos,
-	)
-
-	reverse_slot_map = {idx: label for label, idx in mapa_horarios.items()}
-	slot_labels = [reverse_slot_map[h] for h in H]
-
-	schedule_df = build_schedule_dataframe(
-		model=model,
-		x=x,
-		V=V,
-		E=E,
-		H=H,
-		slot_labels=slot_labels,
-	)
-
-	output_path = Path("data/cronograma_final.csv")
-	export_schedule(schedule_df, str(output_path))
-
-	print(f"Se exporto el cronograma con {len(schedule_df)} asignaciones en: {output_path}")
-
+    return 0
 
 if __name__ == "__main__":
-	main()
+    sys.exit(main())
