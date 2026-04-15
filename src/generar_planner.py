@@ -1,51 +1,63 @@
 import pandas as pd
 import pathlib
 import sys
+from openpyxl.styles import Alignment
 
 def crear_planner_excel(input_csv="data/assignments.csv", output_excel="data/planner_colecta.xlsx"):
-    # Cargar los resultados del solver
     try:
         df = pd.read_csv(input_csv)
     except FileNotFoundError:
         print(f"Error: No se encontró el archivo {input_csv}. Corre el solver primero.")
         return
 
-    # Limpiar espacios en blanco invisibles que pueden romper el ordenamiento
+    # Formatear la etiqueta de cada voluntario combinando nombre y contacto
+    def formatear_contacto(row):
+        nombre = str(row['volunteer']).replace('_', ' ') # Recuperar espacios en el nombre
+        tel = str(row['telefono']).replace('.0', '') if pd.notna(row['telefono']) else ""
+        correo = str(row['correo']) if pd.notna(row['correo']) else ""
+        
+        lineas = [f"👤 {nombre}"]
+        if tel and tel != "nan": lineas.append(f"📞 {tel}")
+        if correo and correo != "nan": lineas.append(f"✉️ {correo}")
+        
+        return "\n".join(lineas)
+
+    df['info_contacto'] = df.apply(formatear_contacto, axis=1)
+
+    # Limpiar horarios para alinear correctamente
     df['slot'] = df['slot'].astype(str).str.replace(r'\s+', ' ', regex=True).str.strip()
     df['slot'] = df['slot'].str.replace(r'\s*-\s*', ' - ', regex=True)
 
-    # Orden cronológico estricto de los horarios
     slots_order = [
         "7:00 - 8:30", "8:30 - 10:00", "10:00 - 11:30", "11:30 - 13:00",
         "13:00 - 14:30", "14:30 - 16:00", "16:00 - 17:30", "17:30 - 19:00", "19:00 - 20:00"
     ]
 
-    # Agrupar múltiples voluntarios asignados a una misma esquina y bloque en un solo texto separado por comas
-    df['volunteer'] = df['volunteer'].astype(str)
-    # Si los IDs son números terminados en .0 (ej: 33.0), limpiamos ese .0
-    df['volunteer'] = df['volunteer'].str.replace(r'\.0$', '', regex=True)
-    
-    agg_df = df.groupby(['date', 'slot', 'location'])['volunteer'].apply(lambda x: ', '.join(x)).reset_index()
+    # Agrupar múltiples voluntarios en la misma celda, separados por un doble salto de línea
+    agg_df = df.groupby(['date', 'slot', 'location'])['info_contacto'].apply(lambda x: '\n\n'.join(x)).reset_index()
 
-    # Escribir a un archivo Excel con múltiples hojas (una por día)
     pathlib.Path(output_excel).parent.mkdir(parents=True, exist_ok=True)
     
     with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
         for date in df['date'].unique():
-            # Filtrar por día
             df_day = agg_df[agg_df['date'] == date]
-            
-            # Pivotear: Filas = Horas, Columnas = Esquinas, Valores = Voluntarios
-            pivot = df_day.pivot(index='slot', columns='location', values='volunteer')
-            
-            # Reindexar para forzar el orden cronológico de las horas, llenando vacíos con strings vacíos
+            pivot = df_day.pivot(index='slot', columns='location', values='info_contacto')
             pivot = pivot.reindex(slots_order).fillna('')
             
-            # Limpiar nombre de la hoja (Excel no permite nombres muy largos o con ciertos caracteres)
             sheet_name = str(date).replace(":", "").replace("/", "")[:31]
-            
-            # Exportar a Excel
             pivot.to_excel(writer, sheet_name=sheet_name)
+            
+            # --- Ajustes visuales (Wrap Text) ---
+            worksheet = writer.sheets[sheet_name]
+            
+            # Ajustar ancho de las columnas (Esquinas)
+            for col in worksheet.columns:
+                worksheet.column_dimensions[col[0].column_letter].width = 35
+                
+            # Habilitar "Ajustar texto" y alinear arriba para todas las celdas
+            for row in worksheet.iter_rows():
+                for cell in row:
+                    cell.alignment = Alignment(wrap_text=True, vertical='top')
             
     print(f"✅ Planner generado exitosamente en: {output_excel}")
 

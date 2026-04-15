@@ -1,7 +1,8 @@
-from collections import defaultdict
 import pandas as pd
 import gurobipy as gp
 from gurobipy import GRB
+from collections import defaultdict
+from typing import Dict, List, Tuple
 
 SLOTS_ORDER = [
     "7:00 - 8:30", "8:30 - 10:00", "10:00 - 11:30", "11:30 - 13:00",
@@ -9,118 +10,117 @@ SLOTS_ORDER = [
 ]
 
 CAPACIDAD_MAXIMA = 4
-CAPACIDAD_MINIMA = 2
-
-# Pesos para priorizar horarios (mayor valor = mayor prioridad)
-SLOT_WEIGHTS = {
-    "7:00 - 8:30": 8,    # Penalización leve (extremo inicial)
-    "8:30 - 10:00": 9,   # Penalización leve (extremo inicial)
-    "10:00 - 11:30": 15, # Prioridad alta (temprano)
-    "11:30 - 13:00": 14, # Prioridad alta
-    "13:00 - 14:30": 13, # Prioridad media
-    "14:30 - 16:00": 12, # Prioridad media
-    "16:00 - 17:30": 11, # Prioridad baja
-    "17:30 - 19:00": 8,  # Penalización leve (extremo final)
-    "19:00 - 20:00": 7   # Penalización leve (extremo final)
-}
-
-# Premio para penalizar fuertemente esquinas vacías (asegura al menos 1 voluntario)
 RECOMPENSA_COBERTURA = 1000
 
-def build_and_solve(availability, volunteers, blocks, volunteer_max, all_locations, time_limit=300.0, mip_gap=0.01):
-    avail_set = set(availability.itertuples(index=False, name=None))
+SLOT_WEIGHTS = {
+    "7:00 - 8:30": 8, "8:30 - 10:00": 9, "10:00 - 11:30": 15, "11:30 - 13:00": 14,
+    "13:00 - 14:30": 13, "14:30 - 16:00": 12, "16:00 - 17:30": 11,
+    "17:30 - 19:00": 8, "19:00 - 20:00": 7
+}
 
-    model = gp.Model("colectatron8000")
+def build_and_solve(availability: pd.DataFrame, volunteers: List[str], 
+                    blocks: List[Tuple], volunteer_max: Dict[Tuple, int], 
+                    all_locations: List[str], roles_jefatura: Dict[str, bool],
+                    time_limit: float = 300.0, mip_gap: float = 0.01) -> pd.DataFrame:
+    
+    model = gp.Model("Colectatron_Standard")
     model.setParam("OutputFlag", 1)
-    if time_limit is not None: model.setParam("TimeLimit", time_limit)
+    model.setParam("TimeLimit", time_limit)
     model.setParam("MIPGap", mip_gap)
 
-    x = {}
-    for v, d, s, l in avail_set:
+    # ==========================================
+    # VARIABLES DE DECISIÓN
+    # ==========================================
+    x = {} # x[voluntario, dia, horario, esquina] -> 1 si es asignado
+    for v, d, s, l in set(availability.itertuples(index=False, name=None)):
         x[v, d, s, l] = model.addVar(vtype=GRB.BINARY, name=f"x_{v}_{d}_{s}_{l}")
 
     if not x:
         return pd.DataFrame(columns=["volunteer", "date", "slot", "location"])
 
-    # --- NUEVA LÓGICA DE FUNCIÓN OBJETIVO ---
+    is_covered = {} # 1 si la esquina l está operativa en el día d y horario s
     dsl_set = set((d, s, l) for v, d, s, l in x.keys())
-    
-    is_covered = {}
     for d, s, l in dsl_set:
         is_covered[d, s, l] = model.addVar(vtype=GRB.BINARY, name=f"cov_{d}_{s}_{l}")
 
-    for d, s, l in dsl_set:
-        v_vars = [x[v, d, s, l] for v in volunteers if (v, d, s, l) in x]
-        if v_vars:
-            # is_covered solo puede valer 1 si hay al menos un voluntario asignado a esa esquina en ese bloque
-            model.addConstr(is_covered[d, s, l] <= gp.quicksum(v_vars), name=f"link_cov_{d}_{s}_{l}")
-        else:
-            model.addConstr(is_covered[d, s, l] == 0)
+    y = {} # 1 si el voluntario v asiste a la esquina l en el día d (para agrupar turnos en la misma esquina)
+    for v, d, s, l in x.keys():
+        if (v, d, l) not in y:
+            y[v, d, l] = model.addVar(vtype=GRB.BINARY, name=f"y_{v}_{d}_{l}")
 
-    # Maximizar la cobertura de esquinas + el peso del turno
+    # ==========================================
+    # FUNCIÓN OBJETIVO
+    # ==========================================
+    # Maximizar cobertura de esquinas (fuerte) + preferencia de horarios (leve)
     obj_expr = gp.quicksum(SLOT_WEIGHTS.get(s, 10) * var for (v, d, s, l), var in x.items())
     obj_expr += gp.quicksum(RECOMPENSA_COBERTURA * var for var in is_covered.values())
     model.setObjective(obj_expr, GRB.MAXIMIZE)
-    # ----------------------------------------
 
-    # 1. Capacidad por bloque
+    # ==========================================
+    # RESTRICCIONES
+    # ==========================================
+    
+    # 1. Vincular Cobertura y Capacidad Máxima
     block_vars = defaultdict(list)
     for (v, d, s, l), var in x.items():
         block_vars[d, s, l].append(var)
         
     for (d, s, l), vars_in_block in block_vars.items():
         suma_voluntarios = gp.quicksum(vars_in_block)
-        
-        # Máximo
+        model.addConstr(is_covered[d, s, l] <= suma_voluntarios, name=f"link_cov_{d}_{s}_{l}")
         model.addConstr(suma_voluntarios <= CAPACIDAD_MAXIMA, name=f"cap_max_{d}_{s}_{l}")
-        
-        # Mínimo condicionado (solo exige el mínimo si is_covered es 1)
-        model.addConstr(suma_voluntarios >= CAPACIDAD_MINIMA * is_covered[d, s, l], name=f"cap_min_{d}_{s}_{l}")
 
-    # 2. Única esquina por día (y link con x)
-    y = {}
-    for v, d, s, l in x.keys():
-        if (v, d, l) not in y:
-            y[v, d, l] = model.addVar(vtype=GRB.BINARY, name=f"y_{v}_{d}_{l}")
-            
+    # 2. Protección del Comisionado (Nadie solo excepto Jefes)
     for (v, d, s, l), var in x.items():
-        model.addConstr(var <= y[v, d, l], name=f"link_{v}_{d}_{s}_{l}")
+        is_jefe = roles_jefatura.get(v, False)
+        if not is_jefe:
+            # Si se asigna este comisionado, la suma del RESTO de personas debe ser >= 1
+            otros_vars = [x[u, d, s, l] for u in volunteers if u != v and (u, d, s, l) in x]
+            if otros_vars:
+                model.addConstr(var <= gp.quicksum(otros_vars), name=f"no_solo_{v}_{d}_{s}_{l}")
+            else:
+                # Si no hay nadie más disponible en este bloque, el comisionado no puede ir
+                model.addConstr(var == 0, name=f"no_solo_{v}_{d}_{s}_{l}_imposible")
 
-    vd_pairs = set((v, d) for v, d, l in y.keys())
-    for v, d in vd_pairs:
-        model.addConstr(gp.quicksum(y[v, d, l] for l in all_locations if (v, d, l) in y) <= 1, name=f"one_loc_{v}_{d}")
+    # 3. Permanencia en una sola esquina por día
+    for (v, d, s, l), var in x.items():
+        model.addConstr(var <= y[v, d, l], name=f"link_y_{v}_{d}_{s}_{l}")
 
-    # 3. Límite de turnos máximo indicado por el voluntario por día
+    for v, d in set((v, d) for v, d, l in y.keys()):
+        model.addConstr(gp.quicksum(y[v, d, l] for l in all_locations if (v, d, l) in y) <= 1, name=f"una_esquina_{v}_{d}")
+
+    # 4. Límite máximo de turnos por voluntario por día
     for (v, d), m_shifts in volunteer_max.items():
-        v_vars = [var for (v_i, d_i, s, l), var in x.items() if v_i == v and d_i == d]
+        v_vars = [var for (vol, dia, s, l), var in x.items() if vol == v and dia == d]
         if v_vars:
-            model.addConstr(gp.quicksum(v_vars) <= m_shifts, name=f"max_s_{v}_{d}")
+            model.addConstr(gp.quicksum(v_vars) <= m_shifts, name=f"max_turnos_{v}_{d}")
 
-    # 4. Sucesión estricta de turnos en el mismo día
-    for (v, d) in vd_pairs:
-        z = {}
-        for s in SLOTS_ORDER:
-            v_s_vars = [var for (v_i, d_i, s_i, l), var in x.items() if v_i == v and d_i == d and s_i == s]
-            z[s] = gp.quicksum(v_s_vars) if v_s_vars else 0
-
+    # 5. Sucesión estricta de turnos continuos
+    for v, d in set((v, d) for v, d, s, l in x.keys()):
+        z = {s: gp.quicksum([var for (vol, dia, horario, l), var in x.items() if vol == v and dia == d and horario == s]) for s in SLOTS_ORDER}
         starts = []
         for i, s in enumerate(SLOTS_ORDER):
             val_s = z[s]
             val_prev = z[SLOTS_ORDER[i-1]] if i > 0 else 0
             
-            if isinstance(val_s, int) and val_s == 0 and isinstance(val_prev, int) and val_prev == 0:
-                continue
-                
-            start_var = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=1, name=f"start_{v}_{d}_{i}")
-            model.addConstr(start_var >= val_s - val_prev, name=f"start_def_{v}_{d}_{i}")
-            starts.append(start_var)
+            # Crear variable continua solo si hay cambio de estado posible
+            if not (isinstance(val_s, int) and val_s == 0 and isinstance(val_prev, int) and val_prev == 0):
+                start_var = model.addVar(vtype=GRB.CONTINUOUS, lb=0, ub=1, name=f"start_{v}_{d}_{i}")
+                model.addConstr(start_var >= val_s - val_prev, name=f"start_def_{v}_{d}_{i}")
+                starts.append(start_var)
 
         if starts:
-            model.addConstr(gp.quicksum(starts) <= 1, name=f"consec_{v}_{d}")
+            model.addConstr(gp.quicksum(starts) <= 1, name=f"turnos_continuos_{v}_{d}")
 
+    # ==========================================
+    # OPTIMIZACIÓN Y EXTRACCIÓN
+    # ==========================================
     model.optimize()
     if model.Status not in (GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL):
+        print(f"El solver no encontró solución óptima. Estado: {model.Status}")
         return pd.DataFrame(columns=["volunteer", "date", "slot", "location"])
 
-    rows = [{"volunteer": v, "date": d, "slot": s, "location": l} for (v, d, s, l), var in x.items() if var.X > 0.5]
-    return pd.DataFrame(rows, columns=["volunteer", "date", "slot", "location"]).sort_values(["date", "slot", "location", "volunteer"]).reset_index(drop=True)
+    rows = [{"volunteer": v, "date": d, "slot": s, "location": l} 
+            for (v, d, s, l), var in x.items() if var.X > 0.5]
+    
+    return pd.DataFrame(rows).sort_values(["date", "slot", "location", "volunteer"]).reset_index(drop=True)
