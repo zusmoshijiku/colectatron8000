@@ -2,12 +2,35 @@
 
 `colectatron8000` optimiza la asignacion de voluntarios a turnos y esquinas de colecta usando `gurobipy`.
 
+LAS COLUMNAS DEL .csv DEBEN SER:
+
+- [0] NOMBRE
+- [1] CORREO
+- [2] NÚMERO DE TELÉFONO
+- [3] ASISTENCIA (SI O NO)
+- [4] DÍA (VIERNES, SÁBADO O AMBOS)
+- [5] CANTIDAD DE TURNOS VIERNES
+- [6] PREFERENCIA HORARIOS VIERNES
+- [7] PREFERENCIA ESQUINA VIERNES
+- [8] CANTIDAD DE TURNOS SÁBADO
+- [9] PREFERENCIA HORARIOS SÁBADO
+- [10] PREFERENCIA ESQUINA SÁBADO
+- [11] CANTIDAD DE TURNOS VIERNES (AMBOS)
+- [12] PREFERENCIA HORARIOS VIERNES (AMBOS)
+- [13] CANTIDAD DE TURNOS SÁBADO (AMBOS)
+- [14] PREFERENCIA HORARIOS SÁBADO (AMBOS)
+- [15] PREFERENCIA ESQUINA (AMBOS)
+- [16] JEFE O COMISIONADO
+- [17+] CUALQUIER OTRA COSA (TDI CRUSH, AUTO, MOOD DEL DÍA, GÜAREVER. EL MODELO NO LO TOMA EN CUENTA)
+
+SI EL ARCHIVO NO TIENE ESTA ESTRUCTURA DE COLUMNAS LA WEA SE VA A CAER, TENGA CUIDADO.
+
 El flujo actual del proyecto es:
-0. Limpiar a priori el excel de respuestas. Eliminar información personal (menos el nombre) y la parte final del auto y TDI-Crush (me dio lata que el algoritmo lo tome en cuenta).
-1. Leer respuestas de formulario (CSV/Excel) y transformar disponibilidad.
-2. Resolver el modelo de optimizacion.
-3. Exportar asignaciones a CSV.
-4. (Opcional) Generar planner en Excel y visualizacion tipo mapa de calor.
+1. Limpiar a priori el excel de respuestas. Eliminar información personal (menos el nombre) y la parte final del auto y TDI-Crush (me dio lata que el algoritmo lo tome en cuenta) (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
+2. Leer respuestas de formulario (CSV/Excel) y transformar disponibilidad.
+3. Resolver el modelo de optimizacion.
+4. Exportar asignaciones a CSV.
+5. (Opcional) Generar planner en Excel y visualizacion tipo mapa de calor.
 
 El resto del readme es slop generado por copilot. No quiere decir que sea información falsa, solo que no hay que ponerle tanta atención. Es por completitud más que nada.
 
@@ -154,12 +177,14 @@ Ademas guarda una imagen:
 
 ## Problemas comunes
 
-1. `ParserError` al leer CSV:
+
+1. LAS COLUMNAS TE QUEDARON DESORDENADAS Y AHORA LA WEA SE CAE. TE DIJE QUE HABÍA QUE ORDENARLAS YNO PESCASTES. 
+2. `ParserError` al leer CSV:
   - Usar exportacion CSV completa de Google Forms y mantener delimitador consistente.
   - Verificar que el archivo no este corrupto o truncado.
-2. `GurobiError` o licencia:
+3. `GurobiError` o licencia:
   - Confirmar que la licencia de Gurobi esta activa en el equipo.
-3. Salida vacia:
+4. Salida vacia:
   - Revisar disponibilidad real de voluntarios y esquinas.
   - Probar relajando parametros (`--mip-gap`) o revisando limites de turnos.
 
