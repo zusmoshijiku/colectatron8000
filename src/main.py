@@ -16,6 +16,8 @@ def main(argv=None):
     from data_processing import build_problem_data
     from solver import build_and_solve
 
+    ## trabajo futuro: añadir lista de correos de gente que se bajó, para hacer reasignación.
+    ## y que luego se tome en cuenta en data_processing, para botar esas filas.
     problem = build_problem_data(args.respuestas, args.esquinas)
     
 

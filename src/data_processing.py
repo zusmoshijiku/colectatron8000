@@ -51,12 +51,13 @@ def build_problem_data(respuestas_path, esquinas_path):
     for _, row in df.iterrows():
         if pd.isna(row.iloc[0]):
             continue
+        # correo electrónico
+        correo = str(row.iloc[0]).strip()
+
         # nombre del voluntario
-        v = str(row.iloc[0]).strip()
+        v = str(row.iloc[1]).strip()
         if not v or v.lower() == "nan": # chequear nulos
             continue
-        # correo electrónico
-        correo = str(row.iloc[1]).strip()
 
         # número de teléfono
         telefono = str(row.iloc[2]).strip()
