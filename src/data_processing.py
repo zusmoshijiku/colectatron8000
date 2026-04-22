@@ -28,8 +28,18 @@ def parse_slots(val):
     val_str = str(val)
     if "Todo el día" in val_str or "Cualquier horario" in val_str: 
         return SLOTS_ORDER
+    
     slots = [s.strip() for s in val_str.split(",") if s.strip()]
-    return [s for s in slots if "-" in s and ":" in s]
+    
+    valid_slots = []
+    for s in slots:
+        # Normalizamos quitando todos los espacios para asegurar el match
+        clean_s = s.replace(" ", "").lower()
+        for canonical in SLOTS_ORDER:
+            if canonical.replace(" ", "").lower() == clean_s:
+                valid_slots.append(canonical)
+                break
+    return valid_slots
 
 def parse_locations(val, all_locations):
     if pd.isna(val): return all_locations

@@ -9,13 +9,14 @@ SLOTS_ORDER = [
     "13:00 - 14:30", "14:30 - 16:00", "16:00 - 17:30", "17:30 - 19:00", "19:00 - 20:00"
 ]
 
-CAPACIDAD_MAXIMA = 4
+CAPACIDAD_MAXIMA = 6
 RECOMPENSA_COBERTURA = 1000
+RECOMPENSA_JEFE = 500
 
 SLOT_WEIGHTS = {
-    "7:00 - 8:30": 8, "8:30 - 10:00": 9, "10:00 - 11:30": 15, "11:30 - 13:00": 14,
-    "13:00 - 14:30": 13, "14:30 - 16:00": 12, "16:00 - 17:30": 11,
-    "17:30 - 19:00": 8, "19:00 - 20:00": 7
+    "7:00 - 8:30": 8, "8:30 - 10:00": 10, "10:00 - 11:30": 10, "11:30 - 13:00": 10,
+    "13:00 - 14:30": 10, "14:30 - 16:00": 10, "16:00 - 17:30": 10,
+    "17:30 - 19:00": 10, "19:00 - 20:00": 5
 }
 
 def build_and_solve(availability: pd.DataFrame, volunteers: List[str], 
@@ -52,7 +53,10 @@ def build_and_solve(availability: pd.DataFrame, volunteers: List[str],
     # FUNCIÓN OBJETIVO
     # ==========================================
     # Maximizar cobertura de esquinas (fuerte) + preferencia de horarios (leve)
-    obj_expr = gp.quicksum(SLOT_WEIGHTS.get(s, 10) * var for (v, d, s, l), var in x.items())
+    obj_expr = gp.quicksum(
+        (SLOT_WEIGHTS.get(s, 10) + (RECOMPENSA_JEFE if roles_jefatura.get(v, False) else 0)) * var 
+        for (v, d, s, l), var in x.items()
+    )
     obj_expr += gp.quicksum(RECOMPENSA_COBERTURA * var for var in is_covered.values())
     model.setObjective(obj_expr, GRB.MAXIMIZE)
 
