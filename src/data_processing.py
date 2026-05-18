@@ -89,7 +89,8 @@ def build_problem_data(respuestas_path, esquinas_path):
         elif "ambos" in dia:
             days_to_process.append(("Viernes", row.iloc[11], row.iloc[12], row.iloc[15]))
             days_to_process.append(("Sábado", row.iloc[13], row.iloc[14], row.iloc[15]))
-        es_jefe = "comisionado" not in str(row.iloc[16]).strip().lower() or pd.isna(row.iloc[16])
+        es_jefe = "comisionadx" not in str(row.iloc[16]).strip().lower() or pd.isna(row.iloc[16]) or \
+                    "comunero" not in str(row.iloc[16]).strip().lower()
         roles[v] = es_jefe
             
         for d, shifts_val, slots_val, loc_val in days_to_process:
