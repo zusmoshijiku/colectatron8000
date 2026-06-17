@@ -56,7 +56,7 @@ def reporte_asignacion(assignments_df: pd.DataFrame,
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--respuestas", default="data/data_cuatroesquinas.csv", help="Ruta al archivo CSV o Excel del formulario.")
+    parser.add_argument("--respuestas", default="data/data_preliminar3.csv", help="Ruta al archivo CSV o Excel del formulario.")
     parser.add_argument("--esquinas", default="data/esquinas.csv", help="Ruta al archivo CSV con las esquinas (columna 'location').")
     parser.add_argument("--output", default="data/assignments.csv", help="Ruta de salida.")
     parser.add_argument("--time-limit", type=float, default=300.0)

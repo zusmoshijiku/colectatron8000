@@ -2,8 +2,11 @@ import pathlib
 import pandas as pd
 
 SLOTS_ORDER = [
-    "7:00 - 8:30", "8:30 - 10:00", "10:00 - 11:30", "11:30 - 13:00",
-    "13:00 - 14:30", "14:30 - 16:00", "16:00 - 17:30", "17:30 - 19:00", "19:00 - 20:00"
+    "7:00 - 8:30", "8:30 - 10:00", 
+    "10:00 - 11:30", "11:30 - 13:00",
+    "13:00 - 14:30", "14:30 - 16:00", 
+    "16:00 - 17:30", "17:30 - 19:00", 
+    "19:00 - 20:00"
 ]
 
 def _read_file(path):
@@ -89,9 +92,9 @@ def build_problem_data(respuestas_path, esquinas_path):
         elif "ambos" in dia:
             days_to_process.append(("Viernes", row.iloc[11], row.iloc[12], row.iloc[15]))
             days_to_process.append(("Sábado", row.iloc[13], row.iloc[14], row.iloc[15]))
-        es_jefe = "comisionadx" not in str(row.iloc[16]).strip().lower() or pd.isna(row.iloc[16]) or \
-                    "comunero" not in str(row.iloc[16]).strip().lower()
+        es_jefe = "Familia" in str(row.iloc[16]).strip().lower() or not pd.isna(row.iloc[16])
         roles[v] = es_jefe
+        print(f"Procesando voluntario: {v}, días: {[d for d, _, _, _ in days_to_process]}, es_jefe: {es_jefe}", flush=True)
             
         for d, shifts_val, slots_val, loc_val in days_to_process:
             max_s = parse_num_shifts(shifts_val)
