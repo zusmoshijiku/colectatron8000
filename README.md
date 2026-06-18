@@ -4,13 +4,11 @@
 
 
 El flujo para asignar turnos es:
-1. Descargar las respuestas como `.xlsx`. Eliminar la columna de tiempo (menos el nombre) y la parte final del auto y TDI-Crush (me dio lata que el algoritmo lo tome en cuenta) (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
+1. Descargar las respuestas como `.xlsx`. Eliminar la columna de tiempo. (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
 2. Guardarlo como `.csv` con utf-8, es importante hacerlo así y no descargarlo como csv desde drive pq si no todo sale mal.
 3. Meterlo en la carpeta `data/`, después actualizar el nombre del archivo en `main.py`
 4. Ejecutar el solver y generar el planner (más adelante hay paso a paso)
 5. Ajustar turnos
-
-El resto del readme es slop generado por copilot. No quiere decir que sea información falsa, solo que no hay que ponerle tanta atención. Es por completitud más que nada.
 
 ## Estructura del proyecto
 
