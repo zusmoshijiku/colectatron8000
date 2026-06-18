@@ -56,7 +56,9 @@ def reporte_asignacion(assignments_df: pd.DataFrame,
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser()
+    ## RUTA ARCHIVO RESPUESTAS, CAMBIAR PARÁMETRO 'default POR EL ARCHIVO CORRESPONDIENTE.
     parser.add_argument("--respuestas", default="data/data_preliminar3.csv", help="Ruta al archivo CSV o Excel del formulario.")
+    ## RUTA ARCHIVO ESQUINAS - NO CAMBIAR EL NOMBRE, SOLO EL ARCHIVO MISMO DE SER NECESARIO.
     parser.add_argument("--esquinas", default="data/esquinas.csv", help="Ruta al archivo CSV con las esquinas (columna 'location').")
     parser.add_argument("--output", default="data/assignments.csv", help="Ruta de salida.")
     parser.add_argument("--time-limit", type=float, default=300.0)

@@ -2,35 +2,13 @@
 
 `colectatron8000` optimiza la asignacion de voluntarios a turnos y esquinas de colecta usando `gurobipy`.
 
-LAS COLUMNAS DEL .csv DEBEN SER:
 
-- [0] CORREO
-- [1] NOMBRE
-- [2] NÚMERO DE TELÉFONO
-- [3] ASISTENCIA (SI O NO)
-- [4] DÍA (VIERNES, SÁBADO O AMBOS)
-- [5] CANTIDAD DE TURNOS VIERNES
-- [6] PREFERENCIA HORARIOS VIERNES
-- [7] PREFERENCIA ESQUINA VIERNES
-- [8] CANTIDAD DE TURNOS SÁBADO
-- [9] PREFERENCIA HORARIOS SÁBADO
-- [10] PREFERENCIA ESQUINA SÁBADO
-- [11] CANTIDAD DE TURNOS VIERNES (AMBOS)
-- [12] PREFERENCIA HORARIOS VIERNES (AMBOS)
-- [13] CANTIDAD DE TURNOS SÁBADO (AMBOS)
-- [14] PREFERENCIA HORARIOS SÁBADO (AMBOS)
-- [15] PREFERENCIA ESQUINA (AMBOS)
-- [16] JEFE O COMISIONADO
-- [17+] CUALQUIER OTRA COSA (TDI CRUSH, AUTO, MOOD DEL DÍA, GÜAREVER. EL MODELO NO LO TOMA EN CUENTA)
-
-SI EL ARCHIVO NO TIENE ESTA ESTRUCTURA DE COLUMNAS LA WEA SE VA A CAER, TENGA CUIDADO.
-
-El flujo actual del proyecto es:
-1. Limpiar a priori el excel de respuestas. Eliminar información personal (menos el nombre) y la parte final del auto y TDI-Crush (me dio lata que el algoritmo lo tome en cuenta) (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
-2. Leer respuestas de formulario (CSV/Excel) y transformar disponibilidad.
-3. Resolver el modelo de optimizacion.
-4. Exportar asignaciones a CSV.
-5. (Opcional) Generar planner en Excel y visualizacion tipo mapa de calor.
+El flujo para asignar turnos es:
+1. Descargar las respuestas como `.xlsx`. Eliminar la columna de tiempo (menos el nombre) y la parte final del auto y TDI-Crush (me dio lata que el algoritmo lo tome en cuenta) (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
+2. Guardarlo como `.csv` con utf-8, es importante hacerlo así y no descargarlo como csv desde drive pq si no todo sale mal.
+3. Meterlo en la carpeta `data/`, después actualizar el nombre del archivo en `main.py`
+4. Ejecutar el solver y generar el planner (más adelante hay paso a paso)
+5. Ajustar turnos
 
 El resto del readme es slop generado por copilot. No quiere decir que sea información falsa, solo que no hay que ponerle tanta atención. Es por completitud más que nada.
 
@@ -70,24 +48,33 @@ pip install -r requirements.txt
 
 ### 1. Respuestas del formulario (`--respuestas`)
 
-Puede ser `.csv` o `.xlsx`.
+LAS COLUMNAS DEL .csv DEBEN SER:
 
-El parser actual esta adaptado al layout de exportacion de Google Forms usado en este proyecto (columnas por posicion), incluyendo campos de:
-- identificador del voluntario,
-- confirmacion de asistencia,
-- dia(s) disponible(s),
-- cantidad maxima de turnos,
-- horarios disponibles,
-- esquinas preferidas.
+- [0] CORREO
+- [1] NOMBRE
+- [2] NÚMERO DE TELÉFONO
+- [3] ASISTENCIA (SI O NO)
+- [4] DÍA (VIERNES, SÁBADO O AMBOS)
+- [5] CANTIDAD DE TURNOS VIERNES
+- [6] PREFERENCIA HORARIOS VIERNES
+- [7] PREFERENCIA ESQUINA VIERNES
+- [8] CANTIDAD DE TURNOS SÁBADO
+- [9] PREFERENCIA HORARIOS SÁBADO
+- [10] PREFERENCIA ESQUINA SÁBADO
+- [11] CANTIDAD DE TURNOS VIERNES (AMBOS)
+- [12] PREFERENCIA HORARIOS VIERNES (AMBOS)
+- [13] CANTIDAD DE TURNOS SÁBADO (AMBOS)
+- [14] PREFERENCIA HORARIOS SÁBADO (AMBOS)
+- [15] PREFERENCIA ESQUINA (AMBOS)
+- [16] JEFE O COMISIONADO
+- [17+] CUALQUIER OTRA COSA (TDI CRUSH, AUTO, MOOD DEL DÍA, GÜAREVER. EL MODELO NO LO TOMA EN CUENTA)
 
-Notas:
-- Para CSV se detecta automaticamente el separador (incluye casos con `;`).
-- Se filtran respuestas `No...`.
-- Se ignoran filas vacias y bloques horarios no validos.
+SI EL ARCHIVO NO TIENE ESTA ESTRUCTURA DE COLUMNAS LA WEA SE VA A CAER, TENGA CUIDADO.
+
 
 ### 2. Esquinas (`--esquinas`)
 
-Archivo CSV/Excel con columna obligatoria:
+Archivo CSV con columna obligatoria:
 
 - `location`: nombre de la esquina/punto de colecta.
 
@@ -99,6 +86,8 @@ Francisco Bilbao con Tobalaba
 Los Leones con Eliodoro Yañez
 Tobalaba con El Bosque
 ```
+
+Si se van a usar otra esquina, basta añadirla en este archivo. Si usan esto para insumos, pueden usar otro archivo `supermercados` con las locaciones y reemplazar el archivo en `main.py`.
 
 ## Ejecucion del solver
 
@@ -121,6 +110,8 @@ Ejemplo:
 ```bash
 python src/main.py --respuestas data/data1.csv --output data/assignments.csv
 ```
+
+Igual todos los argumentos también vienen dados por default y los pueden cambiar en el archivo.
 
 ## Modelo de optimizacion (resumen)
 
@@ -166,14 +157,6 @@ python src/generar_planner.py data/assignments.csv
 Salida por defecto:
 - `data/planner_colecta.xlsx`
 
-### 3. Visualizacion (opcional)
-
-Notebook:
-- `src/visual.ipynb`
-
-Lee `data/assignments.csv` y genera un mapa de calor de ocupacion por esquina y bloque horario.
-Ademas guarda una imagen:
-- `src/cronograma_visualizacion.png`
 
 ## Problemas comunes
 
