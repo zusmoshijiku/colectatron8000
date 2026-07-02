@@ -97,7 +97,7 @@ python src/main.py
 
 Argumentos disponibles:
 
-- `--respuestas` ruta al CSV/Excel del formulario (default: `data/data2.csv`)
+- `--r` ruta al CSV/Excel del formulario (default: `data/data2.csv`)
 - `--esquinas` ruta al CSV/Excel de esquinas (default: `data/esquinas.csv`)
 - `--output` ruta del CSV de salida (default: `data/assignments.csv`)
 - `--time-limit` limite de tiempo del solver en segundos (default: `300`)
@@ -106,7 +106,7 @@ Argumentos disponibles:
 Ejemplo:
 
 ```bash
-python src/main.py --respuestas data/data1.csv --output data/assignments.csv
+python src/main.py --r data/data1.csv --output data/assignments.csv
 ```
 
 Igual todos los argumentos también vienen dados por default y los pueden cambiar en el archivo.
