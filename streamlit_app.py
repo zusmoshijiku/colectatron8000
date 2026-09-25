@@ -297,7 +297,7 @@ ni las opciones** de las preguntas.
     )
     roles_form = st.text_input(
         "Opciones de la pregunta de rol (separadas por coma)",
-        "Comisionado/a, Jefe/a de insumos, Voluntario/a"
+        "Comisionado/a, Familia, Staff"
         if config.tipo == TIPO_INSUMOS
         else "Comisionado/a, Familia, Staff",
     )

@@ -44,7 +44,8 @@
   ],
   "roles_jefe": [
     "Familia",
-    "Staff"
+    "Staff",
+    "Voluntario/a"
   ],
   "reglas": {
     "nadie_solo": true,

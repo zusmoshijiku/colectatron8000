@@ -6,33 +6,32 @@
     "Domingo"
   ],
   "bloques": [
-    "7:00 - 8:30",
-    "8:30 - 10:00",
     "10:00 - 11:30",
     "11:30 - 13:00",
     "13:00 - 14:30",
     "14:30 - 16:00",
     "16:00 - 17:30",
     "17:30 - 19:00",
-    "19:00 - 20:00"
+    "19:00 - 20:30",
+    "20:30 - 21:30"
   ],
   "lugares": [
     {
-      "nombre": "Supermercado Irarrázaval",
-      "direccion": "Av. Irarrázaval 3450",
+      "nombre": "Unimarc Irarrázaval",
+      "direccion": "Av. Irarrázaval 4354",
       "comuna": "Ñuñoa",
       "capacidad": 4
     },
     {
-      "nombre": "Supermercado Grecia",
-      "direccion": "Av. Grecia 2500",
-      "comuna": "Ñuñoa",
+      "nombre": "Unimarc Príncipe de Gales",
+      "direccion": "Príncipe de Gales 7271",
+      "comuna": "La Reina",
       "capacidad": 4
     },
     {
-      "nombre": "Supermercado Providencia",
-      "direccion": "Av. Providencia 2100",
-      "comuna": "Providencia",
+      "nombre": "Unimarc Los Militares",
+      "direccion": "Av. Manquehue Norte 457",
+      "comuna": "Las Condes",
       "capacidad": 4
     }
   ],
@@ -51,8 +50,14 @@
     "falta_auto_al_cierre": 400,
     "auto_presente": 20,
     "bloque": {
-      "7:00 - 8:30": 8,
-      "19:00 - 20:00": 5
+      "10:00 - 11:30": 8,
+      "11:30 - 13:00": 8,
+      "13:00 - 14:30": 8,
+      "14:30 - 16:00": 8,
+      "16:00 - 17:30": 8,
+      "17:30 - 19:00": 8,
+      "19:00 - 20:30": 5,
+      "20:30 - 21:30": 5
     }
   },
   "tiempo_limite_s": 60,
