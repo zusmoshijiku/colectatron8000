@@ -11,7 +11,8 @@ No hay que instalar nada, editar código ni usar la terminal.
 1. **Colecta**: elige la plantilla (financiamiento o insumos) y ajusta días, bloques, lugares y reglas.
    Guarda la configuración (`.json`) para reutilizarla la próxima vez.
 2. **Formulario**: ajusta los textos (invitación con ¿Cuándo? y ¿Dónde?, opciones de rol, la pregunta chiste del final
-   y el link a la foto de la comisión que agradece la inscripción), copia el script que genera la app y pégalo en
+   y el link a la foto de la comisión que agradece la inscripción). En financiamiento, indica si ya salieron los
+   resultados de inscripción a los trabajos (inicios de junio): antes los roles son Familia y Voluntario/a; después, también Staff, copia el script que genera la app y pégalo en
    [script.google.com](https://script.google.com). Al ejecutarlo se crea el Google Form con las preguntas exactas que
    la app sabe leer (paso a paso en la misma pestaña). Las fotos de las opciones de la pregunta chiste se agregan
    después, en el editor del Form.
@@ -44,7 +45,7 @@ Reglas que se activan en la configuración:
 
 | Regla | Financiamiento | Insumos | Qué hace |
 |---|---|---|---|
-| Nadie solo | ✅ | — | Quien no es jefe no puede quedar solo en un bloque. |
+| Nadie solo | ✅ | — | Solo Familia y Staff pueden quedar a cargo de una esquina; Voluntario/a nunca queda solo. En insumos no aplica: siempre hay un jefe de la comisión en el supermercado (y el Form no pregunta el rol). |
 | Horario continuo por lugar | — | ✅ | Cada lugar abre en un solo tramo por día (puede partir más tarde si no hay gente en la mañana). |
 | Auto en el cierre | — | ✅ | En el último bloque de cada supermercado debe haber alguien con auto para el traslado final. Si no hay, se avisa para conseguir uno. |
 | Autos repartidos en el día | — | ✅ | Prefiere que haya personas con auto en varios bloques (traslados intermedios). |

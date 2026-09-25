@@ -175,7 +175,8 @@ def config_financiamiento() -> ConfigColecta:
             Lugar("Tobalaba con El Bosque", comuna="Providencia"),
             Lugar("Holanda con Pocuro", comuna="Providencia"),
         ],
-        roles_jefe=["Jefx de comisión", "Familia", "Staff", "Voluntario/a"],
+        # Familia y Staff pueden quedar a cargo de una esquina (solos); Voluntario/a no.
+        roles_jefe=["Familia", "Staff"],
         reglas=Reglas(nadie_solo=True),
         pesos=Pesos(bloque=dict(PESOS_BLOQUE_FINANCIAMIENTO)),
     )

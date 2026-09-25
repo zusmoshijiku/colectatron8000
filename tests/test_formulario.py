@@ -42,7 +42,8 @@ def test_detecta_columnas_de_la_plantilla():
     assert mapa["lugares"] == pf.P_LUGARES
     assert mapa["bloques"] == pf.P_BLOQUES
     assert mapa["maximo"] == pf.P_MAXIMO
-    assert mapa["rol"] == pf.P_ROL
+    assert mapa["rol"] is None  # en insumos no se pregunta el rol
+    assert detectar_columnas(respuestas_ejemplo(config_financiamiento(), 5))["rol"] == pf.P_ROL
     assert mapa["asiste"] == pf.P_ASISTE
     assert pf.textos_de(config).pregunta_chiste not in mapa.values()
 
@@ -117,6 +118,24 @@ def test_falta_columna_obligatoria():
     lectura = leer_respuestas(pd.DataFrame({"Algo": ["x"]}), config)
     assert any(a.nivel == "error" for a in lectura.avisos)
     assert not lectura.voluntarios
+
+
+def test_roles_de_financiamiento_segun_la_epoca():
+    from datetime import date
+
+    assert not pf.resultados_publicados(date(2026, 4, 20))
+    assert pf.resultados_publicados(date(2026, 9, 25))
+    antes = pf.textos_por_defecto(config_financiamiento(), resultados=False).roles
+    despues = pf.textos_por_defecto(config_financiamiento(), resultados=True).roles
+    assert antes == ["Familia", "Voluntario/a"]
+    assert despues == ["Familia", "Staff", "Voluntario/a"]
+    jefes = config_financiamiento().roles_jefe
+    assert [r for r in despues if es_jefe(r, jefes)] == ["Familia", "Staff"]
+    # En insumos no hay pregunta de rol.
+    assert pf.textos_de(config_insumos()).roles == []
+    assert '"roles": []' in pf.script_apps(config_insumos())  # el script salta la pregunta
+    assert pf.P_ROL not in pf.encabezados(config_insumos())
+    assert pf.P_ROL in pf.encabezados(config_financiamiento())
 
 
 def test_jefes_por_rol():

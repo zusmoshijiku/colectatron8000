@@ -7,6 +7,7 @@ crea el Form, el generador de datos de ejemplo y (por palabras clave) el lector.
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from .config import TIPO_INSUMOS, ConfigColecta, TextosForm
 
@@ -32,10 +33,21 @@ DONDE_ME_NECESITEN = "Donde me necesiten"
 SIN_AUTO = "No tengo auto"
 SIN_BODEGA = "No puedo"
 
-ROLES_POR_DEFECTO = {
-    "financiamiento": ["Comisionadx", "Jefx de comisión", "Familia", "Staff"],
-    "insumos": ["Comisionadx", "Jefx de insumos", "Familia", "Staff"],
-}
+# Roles de financiamiento: a inicios de junio salen los resultados de inscripción a los
+# trabajos voluntarios; desde ahí existe Staff. En insumos no se pregunta el rol, porque
+# siempre hay un jefe de la comisión a cargo del supermercado.
+ROLES_ANTES_DE_RESULTADOS = ["Familia", "Voluntario/a"]
+ROLES_DESPUES_DE_RESULTADOS = ["Familia", "Staff", "Voluntario/a"]
+MES_RESULTADOS = 6
+
+
+def resultados_publicados(hoy: date | None = None) -> bool:
+    """Si ya salieron los resultados de inscripción (desde junio hasta fin de año)."""
+    return (hoy or date.today()).month >= MES_RESULTADOS
+
+
+def roles_financiamiento(resultados: bool) -> list[str]:
+    return list(ROLES_DESPUES_DE_RESULTADOS if resultados else ROLES_ANTES_DE_RESULTADOS)
 
 
 def _enumerar(cosas: list[str]) -> str:
@@ -44,8 +56,14 @@ def _enumerar(cosas: list[str]) -> str:
     return ", ".join(cosas[:-1]) + " y " + cosas[-1]
 
 
-def textos_por_defecto(config: ConfigColecta) -> TextosForm:
-    """Textos con el espíritu del Form de la primera colecta del año."""
+def textos_por_defecto(config: ConfigColecta, resultados: bool | None = None) -> TextosForm:
+    """Textos con el espíritu del Form de la primera colecta del año.
+
+    `resultados`: si ya salieron los resultados de inscripción (define si se ofrece Staff).
+    Por defecto se decide por la fecha de hoy.
+    """
+    if resultados is None:
+        resultados = resultados_publicados()
     insumos = config.tipo == TIPO_INSUMOS
     dias = _enumerar([d.lower() for d in config.dias])
     lugares = _enumerar(config.nombres_lugares)
@@ -63,8 +81,8 @@ def textos_por_defecto(config: ConfigColecta) -> TextosForm:
         return TextosForm(
             titulo="COLECTA DE INSUMOS 🛒🥫",
             invitacion=invitacion,
-            roles=list(ROLES_POR_DEFECTO["insumos"]),
-            ayuda_rol="Declaración formal de rol 🫡",
+            roles=[],
+            ayuda_rol="",
             opcion_si="Sí, voy con todo 🛒",
             opcion_no="No, odio a insumos 😔",
             pregunta_chiste="¿Cuál es tu mood insumístico? (importantísimo)",
@@ -75,8 +93,9 @@ def textos_por_defecto(config: ConfigColecta) -> TextosForm:
     return TextosForm(
         titulo="COLECTA 🤑💵",
         invitacion=invitacion,
-        roles=list(ROLES_POR_DEFECTO["financiamiento"]),
-        ayuda_rol="Declaración formal de rol. Si eres comisionadx y no lo declaras, podrías quedar solx en una esquina...",
+        roles=roles_financiamiento(resultados),
+        ayuda_rol="Declaración formal de rol. Familia y Staff pueden quedar a cargo de una esquina; "
+        "si no lo declaras, podrías quedar solx en una esquina...",
         opcion_si="Sí, voy con todo 🤑",
         opcion_no="No, odio a financiamiento 😔",
         pregunta_chiste="¿Cuál es tu mood financiero? (importantísimo)",
@@ -99,8 +118,6 @@ def validar_textos(textos: TextosForm) -> list[str]:
         problemas.append("La opción para asistir debe empezar con «Sí».")
     if es_si(textos.opcion_no) is not False:
         problemas.append("La opción para no asistir debe empezar con «No».")
-    if not textos.roles:
-        problemas.append("Falta al menos una opción de rol.")
     if textos.pregunta_chiste.strip() and not textos.opciones_chiste:
         problemas.append("La pregunta chiste necesita al menos una opción.")
     return problemas
@@ -108,7 +125,10 @@ def validar_textos(textos: TextosForm) -> list[str]:
 
 def encabezados(config: ConfigColecta) -> list[str]:
     """Columnas que exporta Google Sheets para el Form generado con `script_apps`."""
-    cols = [COL_MARCA, COL_CORREO, P_NOMBRE, P_TELEFONO, P_ROL, P_ASISTE]
+    cols = [COL_MARCA, COL_CORREO, P_NOMBRE, P_TELEFONO]
+    if textos_de(config).roles:
+        cols.append(P_ROL)
+    cols.append(P_ASISTE)
     cols += [f"{P_BLOQUES} [{b}]" for b in config.bloques]
     cols += [f"{P_MAXIMO} [{d}]" for d in config.dias]
     cols.append(P_LUGARES)
@@ -206,11 +226,13 @@ function crearFormulario() {
         .setHelpText('Escribe el número como +569XXXXXXXX')
         .build()
     );
-  form.addMultipleChoiceItem()
-    .setTitle(P.rol)
-    .setHelpText(DATOS.ayudaRol)
-    .setChoiceValues(DATOS.roles)
-    .setRequired(true);
+  if (DATOS.roles.length) {
+    form.addMultipleChoiceItem()
+      .setTitle(P.rol)
+      .setHelpText(DATOS.ayudaRol)
+      .setChoiceValues(DATOS.roles)
+      .setRequired(true);
+  }
   const asiste = form.addMultipleChoiceItem().setTitle(P.asiste).setRequired(true);
 
   // --- Disponibilidad ---
