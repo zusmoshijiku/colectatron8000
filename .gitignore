@@ -89,7 +89,11 @@ data/planner_colecta.xlsx
 data/cronograma_final.csv
 
 
-scr/visual.ipynb
+src/visual.ipynb
 
 archivo_temporal.xlsx
 secret/
+
+# Datos personales y respaldos locales (nunca al repo)
+*.ipynb
+_respaldo_git/
