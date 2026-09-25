@@ -12,7 +12,8 @@ No hay que instalar nada, editar código ni usar la terminal.
    Guarda la configuración (`.json`) para reutilizarla la próxima vez.
 2. **Formulario**: ajusta los textos (invitación con ¿Cuándo? y ¿Dónde?, opciones de rol, la pregunta chiste del final
    y el link a la foto de la comisión que agradece la inscripción). En financiamiento, indica si ya salieron los
-   resultados de inscripción a los trabajos (inicios de junio): antes los roles son Familia y Voluntario/a; después, también Staff, copia el script que genera la app y pégalo en
+   resultados de inscripción a los trabajos (inicios de junio): antes los roles son Familia y Voluntario/a; después,
+   también Staff. Luego copia el script que genera la app y pégalo en
    [script.google.com](https://script.google.com). Al ejecutarlo se crea el Google Form con las preguntas exactas que
    la app sabe leer (paso a paso en la misma pestaña). Las fotos de las opciones de la pregunta chiste se agregan
    después, en el editor del Form.
