@@ -67,6 +67,26 @@ class Pesos:
 
 
 @dataclass
+class TextosForm:
+    """Textos del Google Form que no afectan la lectura: invitación, chistes y despedida.
+
+    Los títulos de las preguntas que la app lee están fijos en `plantilla_form`.
+    """
+
+    titulo: str
+    invitacion: str
+    roles: list[str]
+    ayuda_rol: str
+    opcion_si: str  # debe empezar con "Sí"
+    opcion_no: str  # debe empezar con "No"
+    pregunta_chiste: str
+    opciones_chiste: list[str]
+    chiste_obligatorio: bool
+    despedida: str
+    foto_url: str = ""
+
+
+@dataclass
 class ConfigColecta:
     nombre: str
     tipo: str
@@ -79,6 +99,8 @@ class ConfigColecta:
     pesos: Pesos = field(default_factory=Pesos)
     tiempo_limite_s: float = 60
     mip_gap: float = 0.01
+    # Textos del Form; None = los de la plantilla (ver plantilla_form.textos_de).
+    form: TextosForm | None = None
 
     @property
     def nombres_lugares(self) -> list[str]:
@@ -119,6 +141,8 @@ class ConfigColecta:
         data["lugares"] = [Lugar(**lugar) for lugar in data.get("lugares", [])]
         data["reglas"] = Reglas(**data.get("reglas", {}))
         data["pesos"] = Pesos(**data.get("pesos", {}))
+        if data.get("form"):
+            data["form"] = TextosForm(**data["form"])
         return cls(**data)
 
     @classmethod
@@ -139,7 +163,7 @@ def config_financiamiento() -> ConfigColecta:
             Lugar("Tobalaba con El Bosque", comuna="Providencia"),
             Lugar("Holanda con Pocuro", comuna="Providencia"),
         ],
-        roles_jefe=["Familia", "Staff"],
+        roles_jefe=["Jefx de comisión", "Familia", "Staff"],
         reglas=Reglas(nadie_solo=True),
         pesos=Pesos(bloque=dict(PESOS_BLOQUE_POR_DEFECTO)),
     )

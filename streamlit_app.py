@@ -15,7 +15,7 @@ import streamlit as st
 
 from colectatron import geo
 from colectatron.bodegas import asignar_bodegas
-from colectatron.config import PLANTILLAS, TIPO_INSUMOS, ConfigColecta, Lugar, Pesos, Reglas
+from colectatron.config import PLANTILLAS, TIPO_INSUMOS, ConfigColecta, Lugar, Pesos, Reglas, TextosForm
 from colectatron.ejemplo import respuestas_ejemplo
 from colectatron.formulario import (
     CAMPOS,
@@ -29,7 +29,7 @@ from colectatron.formulario import (
     leer_tabla,
     valores_de_rol,
 )
-from colectatron.plantilla_form import script_apps
+from colectatron.plantilla_form import script_apps, textos_de, textos_por_defecto, validar_textos
 from colectatron.reportes import cobertura, planner_excel, por_persona, resumen, sin_turno
 from colectatron.solver import resolver
 
@@ -258,19 +258,15 @@ with tab_colecta:
         ),
         tiempo_limite_s=tiempo,
         mip_gap=cfg.mip_gap,
+        form=cfg.form,
     )
     ESTADO["config"] = nuevo
 
     for problema in nuevo.validar():
         st.error(problema)
 
-    st.download_button(
-        "💾 Guardar esta configuración (.json)",
-        nuevo.to_json().encode("utf-8"),
-        file_name=f"{nuevo.nombre.lower().replace(' ', '_')}.json",
-        mime="application/json",
-        help="Guárdala para reutilizarla en la próxima colecta: se carga arriba a la derecha.",
-    )
+    # Se llena al final, cuando la pestaña Formulario ya agregó sus textos.
+    lugar_boton_guardar = st.empty()
 
 config: ConfigColecta = ESTADO["config"]
 
@@ -283,27 +279,99 @@ with tab_form:
     st.markdown(
         """
 Con este script se crea el Google Form con **exactamente** las preguntas que la app sabe leer,
-usando los días, bloques y lugares de la pestaña *Colecta*. No hay que programar nada:
+usando los días, bloques y lugares de la pestaña *Colecta* y los textos de abajo. No hay que programar nada:
 
 1. Entra a [script.google.com](https://script.google.com) con la cuenta de la comisión y crea un **Nuevo proyecto**.
-2. Borra lo que aparece, pega el código de abajo (botón de copiar en la esquina) y guarda.
+2. Borra lo que aparece, pega el código del final (botón de copiar en la esquina) y guarda.
 3. Arriba elige la función `crearFormulario` y presiona **Ejecutar**. Acepta los permisos.
 4. En el *Registro de ejecución* aparecen los links para responder y para editar el Form.
 5. En el Form, pestaña **Respuestas → Vincular con Hojas de cálculo**.
 
-Puedes cambiar descripciones, colores y agregar emojis en las descripciones, pero **no cambies los títulos
-ni las opciones** de las preguntas.
+Después puedes cambiar colores, agregar imágenes y emojis en el editor del Form, pero **no cambies los títulos
+ni las opciones** de las preguntas de disponibilidad: la app los usa para leer las respuestas.
 """
     )
-    roles_form = st.text_input(
-        "Opciones de la pregunta de rol (separadas por coma)",
-        "Comisionado/a, Familia, Staff"
-        if config.tipo == TIPO_INSUMOS
-        else "Comisionado/a, Familia, Staff",
+
+    textos = textos_de(config)
+    vf = f"{ESTADO['version_config']}_{ESTADO.get('version_form', 0)}"
+
+    st.markdown("#### Inicio del Form")
+    f_titulo = st.text_input("Título", textos.titulo, key=f"f_titulo_{vf}")
+    f_invitacion = st.text_area(
+        "Invitación",
+        textos.invitacion,
+        height=230,
+        key=f"f_inv_{vf}",
+        help="Completa las fechas en ¿Cuándo?. Los emojis se ven igual en el Form.",
     )
-    codigo = script_apps(config, [x.strip() for x in roles_form.split(",") if x.strip()])
-    st.download_button("Descargar script (.gs)", codigo.encode("utf-8"), file_name="crear_formulario.gs")
-    st.code(codigo, language="javascript")
+    c1, c2 = st.columns(2)
+    f_si = c1.text_input("Opción para ir (debe empezar con «Sí»)", textos.opcion_si, key=f"f_si_{vf}")
+    f_no = c2.text_input("Opción para no ir (debe empezar con «No»)", textos.opcion_no, key=f"f_no_{vf}")
+    f_roles = c1.text_input("Opciones de rol (separadas por coma)", ", ".join(textos.roles), key=f"f_roles_{vf}")
+    f_ayuda_rol = c2.text_input("Descripción de la pregunta de rol", textos.ayuda_rol, key=f"f_ayuda_{vf}")
+
+    st.markdown("#### Final del Form")
+    st.caption("Lo ven todas las personas, también quienes responden que no van. La app no usa estas respuestas.")
+    f_chiste = st.text_input(
+        "Pregunta chiste (déjala vacía para no incluirla)", textos.pregunta_chiste, key=f"f_chiste_{vf}"
+    )
+    c1, c2 = st.columns([3, 1])
+    f_opciones = c1.text_area(
+        "Opciones de la pregunta chiste (una por línea)",
+        "\n".join(textos.opciones_chiste),
+        height=160,
+        key=f"f_opciones_{vf}",
+        help="Para ponerle una foto a cada opción, como en la primera colecta, usa el ícono de imagen "
+        "junto a cada opción en el editor del Form.",
+    )
+    f_obligatoria = c2.checkbox("Obligatoria", textos.chiste_obligatorio, key=f"f_oblig_{vf}")
+    f_despedida = st.text_input("Despedida (va junto a la foto)", textos.despedida, key=f"f_desp_{vf}")
+    f_foto = st.text_input(
+        "Link a la foto de la comisión",
+        textos.foto_url,
+        key=f"f_foto_{vf}",
+        help="Link de Google Drive (compartido con «cualquier persona con el enlace») o link directo a una imagen. "
+        "Si lo dejas vacío, agrega la foto a mano en el editor del Form: Insertar imagen.",
+    )
+
+    nuevos = TextosForm(
+        titulo=f_titulo.strip() or textos.titulo,
+        invitacion=f_invitacion.strip(),
+        roles=[x.strip() for x in f_roles.split(",") if x.strip()],
+        ayuda_rol=f_ayuda_rol.strip(),
+        opcion_si=f_si.strip(),
+        opcion_no=f_no.strip(),
+        pregunta_chiste=f_chiste.strip(),
+        opciones_chiste=[x.strip() for x in f_opciones.splitlines() if x.strip()],
+        chiste_obligatorio=f_obligatoria,
+        despedida=f_despedida.strip(),
+        foto_url=f_foto.strip(),
+    )
+    config.form = None if nuevos == textos_por_defecto(config) else nuevos
+    if config.form is not None and st.button("Volver a los textos de la plantilla"):
+        config.form = None
+        ESTADO["version_form"] = ESTADO.get("version_form", 0) + 1
+        st.rerun()
+
+    problemas_form = validar_textos(nuevos)
+    for problema in problemas_form:
+        st.error(problema)
+
+    st.markdown("#### Script")
+    st.caption("Los textos quedan guardados en la configuración (.json) de la pestaña Colecta.")
+    if not problemas_form:
+        codigo = script_apps(config)
+        st.download_button("Descargar script (.gs)", codigo.encode("utf-8"), file_name="crear_formulario.gs")
+        st.code(codigo, language="javascript")
+
+
+lugar_boton_guardar.download_button(
+    "💾 Guardar esta configuración (.json)",
+    config.to_json().encode("utf-8"),
+    file_name=f"{config.nombre.lower().replace(' ', '_')}.json",
+    mime="application/json",
+    help="Incluye los textos del Form. Guárdala para reutilizarla en la próxima colecta: se carga arriba a la derecha.",
+)
 
 
 # ---------------------------------------------------------------------------

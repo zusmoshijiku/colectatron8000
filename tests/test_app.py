@@ -17,6 +17,7 @@ def test_flujo_con_datos_de_ejemplo():
     at = AppTest.from_file(APP, default_timeout=120)
     at.run()
     assert not at.exception
+    assert "function crearFormulario" in at.code[0].value
 
     _boton(at, "ejemplo").click()
     at.run()
@@ -64,3 +65,17 @@ def test_mapa_de_casas_bodega(monkeypatch):
     at.run()
     assert not at.exception
     assert not at.error
+
+
+def test_textos_del_form_se_guardan_en_la_configuracion():
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    chiste = next(t for t in at.text_input if t.label.startswith("Pregunta chiste"))
+    chiste.input("¿Qué insumo eres?").run()
+    assert not at.exception
+    assert at.session_state["config"].form.pregunta_chiste == "¿Qué insumo eres?"
+    assert "¿Qué insumo eres?" in at.code[0].value
+
+    opcion_si = next(t for t in at.text_input if t.label.startswith("Opción para ir"))
+    opcion_si.input("Voy con todo").run()
+    assert at.error and not at.code

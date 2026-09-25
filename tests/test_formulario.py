@@ -25,6 +25,8 @@ def test_normalizar_y_si_no():
     assert es_si("Si") is True
     assert es_si("Sí, voy con todo🤑") is True
     assert es_si("No, odio a financiamiento") is False
+    assert es_si("No, odio a insumos 😔") is False
+    assert es_si("Sí, voy con todo 🛒") is True
     assert es_si("") is None
     assert es_si("quizás") is None
 
@@ -40,6 +42,9 @@ def test_detecta_columnas_de_la_plantilla():
     assert mapa["lugares"] == pf.P_LUGARES
     assert mapa["bloques"] == pf.P_BLOQUES
     assert mapa["maximo"] == pf.P_MAXIMO
+    assert mapa["rol"] == pf.P_ROL
+    assert mapa["asiste"] == pf.P_ASISTE
+    assert pf.textos_de(config).pregunta_chiste not in mapa.values()
 
 
 def test_detecta_columnas_en_cualquier_orden():
