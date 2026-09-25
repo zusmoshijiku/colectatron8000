@@ -107,3 +107,14 @@ def test_textos_del_form():
 
     malos = TextosForm(**{**config.form.__dict__, "opcion_si": "Voy con todo", "opcion_no": "Nop"})
     assert len(validar_textos(malos)) == 2
+
+
+def test_plantillas_coinciden_con_ejemplos():
+    import pathlib
+
+    from colectatron.config import PLANTILLAS
+
+    carpeta = pathlib.Path(__file__).resolve().parents[1] / "ejemplos"
+    for tipo, plantilla in PLANTILLAS.items():
+        guardada = ConfigColecta.from_json((carpeta / f"config_{tipo}.json").read_text(encoding="utf-8"))
+        assert plantilla() == guardada, f"config.py y ejemplos/config_{tipo}.json no coinciden"

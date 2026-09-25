@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 
-BLOQUES_POR_DEFECTO = [
+# Deben coincidir con ejemplos/config_*.json (lo verifica tests/test_reportes_y_bodegas.py).
+BLOQUES_FINANCIAMIENTO = [
     "7:00 - 8:30",
     "8:30 - 10:00",
     "10:00 - 11:30",
@@ -20,9 +21,20 @@ BLOQUES_POR_DEFECTO = [
     "17:30 - 19:00",
     "19:00 - 20:00",
 ]
+BLOQUES_INSUMOS = [
+    "10:00 - 11:30",
+    "11:30 - 13:00",
+    "13:00 - 14:30",
+    "14:30 - 16:00",
+    "16:00 - 17:30",
+    "17:30 - 19:00",
+    "19:00 - 20:30",
+    "20:30 - 21:30",
+]
 
-# Los bloques extremos pesan menos: se prefiere cubrir el centro del día.
-PESOS_BLOQUE_POR_DEFECTO = {"7:00 - 8:30": 8, "19:00 - 20:00": 5}
+# Los bloques extremos pesan menos: se prefiere cubrir el centro del día (10 si no aparece).
+PESOS_BLOQUE_FINANCIAMIENTO = {"7:00 - 8:30": 8, "19:00 - 20:00": 5}
+PESOS_BLOQUE_INSUMOS = {b: 8 for b in BLOQUES_INSUMOS[:6]} | {"19:00 - 20:30": 5, "20:30 - 21:30": 5}
 
 TIPO_FINANCIAMIENTO = "financiamiento"
 TIPO_INSUMOS = "insumos"
@@ -156,16 +168,16 @@ def config_financiamiento() -> ConfigColecta:
         nombre="Colecta de financiamiento",
         tipo=TIPO_FINANCIAMIENTO,
         dias=["Viernes", "Sábado"],
-        bloques=list(BLOQUES_POR_DEFECTO),
+        bloques=list(BLOQUES_FINANCIAMIENTO),
         lugares=[
             Lugar("Francisco Bilbao con Tobalaba", comuna="Providencia"),
             Lugar("Los Leones con Eliodoro Yáñez", comuna="Providencia"),
             Lugar("Tobalaba con El Bosque", comuna="Providencia"),
             Lugar("Holanda con Pocuro", comuna="Providencia"),
         ],
-        roles_jefe=["Jefx de comisión", "Familia", "Staff"],
+        roles_jefe=["Jefx de comisión", "Familia", "Staff", "Voluntario/a"],
         reglas=Reglas(nadie_solo=True),
-        pesos=Pesos(bloque=dict(PESOS_BLOQUE_POR_DEFECTO)),
+        pesos=Pesos(bloque=dict(PESOS_BLOQUE_FINANCIAMIENTO)),
     )
 
 
@@ -175,11 +187,11 @@ def config_insumos() -> ConfigColecta:
         nombre="Colecta de insumos",
         tipo=TIPO_INSUMOS,
         dias=["Sábado", "Domingo"],
-        bloques=list(BLOQUES_POR_DEFECTO),
+        bloques=list(BLOQUES_INSUMOS),
         lugares=[
-            Lugar("Supermercado Irarrázaval", "Av. Irarrázaval 3450", "Ñuñoa", 4),
-            Lugar("Supermercado Grecia", "Av. Grecia 2500", "Ñuñoa", 4),
-            Lugar("Supermercado Providencia", "Av. Providencia 2100", "Providencia", 4),
+            Lugar("Unimarc Irarrázaval", "Av. Irarrázaval 4354", "Ñuñoa", 4),
+            Lugar("Unimarc Príncipe de Gales", "Príncipe de Gales 7271", "La Reina", 4),
+            Lugar("Unimarc Los Militares", "Av. Manquehue Norte 457", "Las Condes", 4),
         ],
         # Siempre hay un jefe de insumos en el local: no hace falta priorizar ni proteger.
         roles_jefe=[],
@@ -190,7 +202,7 @@ def config_insumos() -> ConfigColecta:
             autos_durante_el_dia=True,
             asignar_bodegas=True,
         ),
-        pesos=Pesos(jefe=0, bloque=dict(PESOS_BLOQUE_POR_DEFECTO)),
+        pesos=Pesos(jefe=0, bloque=dict(PESOS_BLOQUE_INSUMOS)),
     )
 
 
