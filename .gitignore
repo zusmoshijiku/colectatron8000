@@ -1,99 +1,38 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
+build/
+dist/
 .pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Environments
+# Entornos
 .env
-.venv
-env/
+.venv/
 venv/
-ENV/
-env.bak/
-venv.bak/
+env/
 
-# IDEs
+# Editores y sistema
 .vscode/
 .idea/
 *.swp
-*.swo
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pyenv
-.python-version
-
-# Gurobi license
-gurobi.lic
-
-# Output files (keep the data/ directory but ignore generated outputs)
-data/output/
-
-# OS-specific
 .DS_Store
 Thumbs.db
-data/*
+.ipynb_checkpoints/
 
-data/data2.csv
-data/data3.csv
-data/data4.csv
-data/assignments.csv
-data/planner_colecta.xlsx
-data/cronograma_final.csv
-
-
-src/visual.ipynb
-
-archivo_temporal.xlsx
+# Secretos (la contraseña de la app va en Streamlit Cloud → Settings → Secrets)
+.streamlit/secrets.toml
+gurobi.lic
 secret/
 
-# Datos personales y respaldos locales (nunca al repo)
+# Datos personales: nunca al repositorio. Solo se versionan los ejemplos ficticios.
+data/
+*.csv
+*.xlsx
+*.xls
 *.ipynb
-_respaldo_git/
+!ejemplos/*.csv
+!ejemplos/*.xlsx

@@ -1,0 +1,19 @@
+[project]
+name = "colectatron8000"
+version = "3.0.0"
+description = "Asignación de voluntarios a turnos de colecta con optimización entera (HiGHS) y una app Streamlit."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # el formateador maneja el largo; los textos largos en español se dejan así
