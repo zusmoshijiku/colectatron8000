@@ -1,0 +1,60 @@
+{
+  "nombre": "Colecta de insumos",
+  "tipo": "insumos",
+  "dias": [
+    "Sábado",
+    "Domingo"
+  ],
+  "bloques": [
+    "7:00 - 8:30",
+    "8:30 - 10:00",
+    "10:00 - 11:30",
+    "11:30 - 13:00",
+    "13:00 - 14:30",
+    "14:30 - 16:00",
+    "16:00 - 17:30",
+    "17:30 - 19:00",
+    "19:00 - 20:00"
+  ],
+  "lugares": [
+    {
+      "nombre": "Supermercado Irarrázaval",
+      "direccion": "Av. Irarrázaval 3450",
+      "comuna": "Ñuñoa",
+      "capacidad": 4
+    },
+    {
+      "nombre": "Supermercado Grecia",
+      "direccion": "Av. Grecia 2500",
+      "comuna": "Ñuñoa",
+      "capacidad": 4
+    },
+    {
+      "nombre": "Supermercado Providencia",
+      "direccion": "Av. Providencia 2100",
+      "comuna": "Providencia",
+      "capacidad": 4
+    }
+  ],
+  "roles_jefe": [],
+  "reglas": {
+    "nadie_solo": false,
+    "horario_continuo_por_lugar": true,
+    "auto_al_cierre": true,
+    "autos_durante_el_dia": true,
+    "asignar_bodegas": true
+  },
+  "pesos": {
+    "cobertura": 1000,
+    "por_persona": 100,
+    "jefe": 0,
+    "falta_auto_al_cierre": 400,
+    "auto_presente": 20,
+    "bloque": {
+      "7:00 - 8:30": 8,
+      "19:00 - 20:00": 5
+    }
+  },
+  "tiempo_limite_s": 60,
+  "mip_gap": 0.01
+}

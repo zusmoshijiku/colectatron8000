@@ -1,4 +1,8 @@
-gurobipy>=11.0.0
-pandas>=2.0.0
-numpy>=1.24.0
-openpyxl>=3.1.0
+# Dependencias de la app (Streamlit Community Cloud instala este archivo).
+streamlit>=1.50,<2
+highspy>=1.11
+pandas>=2.2
+openpyxl>=3.1
+requests>=2.31
+altair>=5
+pydeck>=0.9

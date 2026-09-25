@@ -1,0 +1,69 @@
+{
+  "nombre": "Colecta de financiamiento",
+  "tipo": "financiamiento",
+  "dias": [
+    "Viernes",
+    "Sábado"
+  ],
+  "bloques": [
+    "7:00 - 8:30",
+    "8:30 - 10:00",
+    "10:00 - 11:30",
+    "11:30 - 13:00",
+    "13:00 - 14:30",
+    "14:30 - 16:00",
+    "16:00 - 17:30",
+    "17:30 - 19:00",
+    "19:00 - 20:00"
+  ],
+  "lugares": [
+    {
+      "nombre": "Francisco Bilbao con Tobalaba",
+      "direccion": "",
+      "comuna": "Providencia",
+      "capacidad": 5
+    },
+    {
+      "nombre": "Los Leones con Eliodoro Yáñez",
+      "direccion": "",
+      "comuna": "Providencia",
+      "capacidad": 5
+    },
+    {
+      "nombre": "Tobalaba con El Bosque",
+      "direccion": "",
+      "comuna": "Providencia",
+      "capacidad": 5
+    },
+    {
+      "nombre": "Holanda con Pocuro",
+      "direccion": "",
+      "comuna": "Providencia",
+      "capacidad": 5
+    }
+  ],
+  "roles_jefe": [
+    "Familia",
+    "Staff"
+  ],
+  "reglas": {
+    "nadie_solo": true,
+    "horario_continuo_por_lugar": false,
+    "auto_al_cierre": false,
+    "autos_durante_el_dia": false,
+    "asignar_bodegas": false
+  },
+  "pesos": {
+    "cobertura": 1000,
+    "por_persona": 100,
+    "jefe": 500,
+    "falta_auto_al_cierre": 400,
+    "auto_presente": 20,
+    "bloque": {
+      "7:00 - 8:30": 8,
+      "19:00 - 20:00": 5
+    }
+  },
+  "tiempo_limite_s": 60,
+  "mip_gap": 0.01
+}

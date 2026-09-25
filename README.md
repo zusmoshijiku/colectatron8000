@@ -1,173 +1,120 @@
-# colectatron8000
+# Colectatron8000
 
-`colectatron8000` optimiza la asignacion de voluntarios a turnos y esquinas de colecta usando `gurobipy`.
+Asigna voluntarios a turnos de colecta —de dinero en esquinas (financiamiento) o de insumos en supermercados—
+buscando cubrir la mayor cantidad de bloques posible y respetando la disponibilidad de cada persona.
 
+Se usa desde el navegador: se suben las respuestas del Google Form y se descarga el planner en Excel.
+No hay que instalar nada, editar código ni usar la terminal.
 
-El flujo para asignar turnos es:
-1. Descargar las respuestas como `.xlsx`. Eliminar la columna de tiempo. (ORDENAR LAS COLUMNAS SI ES NECESARIO, OJALÁ QUE EL FORM LO DEJE TAL CUAL SE NECESITA)
-2. Guardarlo como `.csv` con utf-8, es importante hacerlo así y no descargarlo como csv desde drive pq si no todo sale mal.
-3. Meterlo en la carpeta `data/`, después actualizar el nombre del archivo en `main.py`
-4. Ejecutar el solver y generar el planner (más adelante hay paso a paso)
-5. Ajustar turnos
+## Cómo se usa (para la comisión)
 
-## Estructura del proyecto
+1. **Colecta**: elige la plantilla (financiamiento o insumos) y ajusta días, bloques, lugares y reglas.
+   Guarda la configuración (`.json`) para reutilizarla la próxima vez.
+2. **Formulario**: copia el script que genera la app y pégalo en [script.google.com](https://script.google.com).
+   Al ejecutarlo se crea el Google Form con las preguntas exactas que la app sabe leer (paso a paso en la misma pestaña).
+3. **Respuestas**: descarga las respuestas desde la hoja del Form (*Archivo → Descargar → Excel o CSV*) y súbelas tal cual.
+   La app reconoce las columnas por el texto de la pregunta y lista todo lo que haya que revisar
+   (respuestas repetidas, lugares mal escritos, gente que dijo que no va, etc.).
+4. **Resultados**: presiona *Asignar turnos*. Verás la ocupación de cada bloque, los turnos por persona,
+   quién quedó sin turno y los avisos (por ejemplo, un cierre sin auto). Descarga el planner en Excel.
+
+¿Quieres probar sin datos reales? En la pestaña *Respuestas* está el botón **Probar con respuestas de ejemplo**.
+También hay archivos ficticios en [`ejemplos/`](ejemplos/).
+
+### El planner en Excel
+
+- Una hoja por día: bloques × lugares, con nombre y teléfono (⭐ jefe, 🚗 tiene auto ese día).
+- **Por persona**: dónde y a qué hora le toca a cada uno (para avisar por WhatsApp).
+- **Sin turno**, **Casas-bodega** (insumos) y **Avisos**.
+
+## Reglas del modelo
+
+El programa resuelve un modelo de optimización entera con [HiGHS](https://highs.dev) (gratuito, sin licencia).
+
+Siempre se cumple:
+
+- Máximo de personas por lugar y bloque (capacidad de cada lugar).
+- Cada persona está en un solo lugar por día.
+- Nadie hace más bloques de los que ofreció, y sus bloques de un día son seguidos.
+
+Reglas que se activan en la configuración:
+
+| Regla | Financiamiento | Insumos | Qué hace |
+|---|---|---|---|
+| Nadie solo | ✅ | — | Quien no es jefe no puede quedar solo en un bloque. |
+| Horario continuo por lugar | — | ✅ | Cada lugar abre en un solo tramo por día (puede partir más tarde si no hay gente en la mañana). |
+| Auto en el cierre | — | ✅ | En el último bloque de cada supermercado debe haber alguien con auto para el traslado final. Si no hay, se avisa para conseguir uno. |
+| Autos repartidos en el día | — | ✅ | Prefiere que haya personas con auto en varios bloques (traslados intermedios). |
+| Casas-bodega | — | ✅ | Asigna a cada supermercado abierto una casa donde guardar lo recolectado, de preferencia en la misma comuna o la más cercana en auto. |
+
+Qué busca, en orden de importancia: cubrir bloques, que cada persona tenga al menos un turno, dar prioridad a los jefes
+(si corresponde) y preferir los bloques centrales del día. Los pesos se pueden cambiar en *Opciones avanzadas*.
+
+**Mapa y tiempos de traslado**: en insumos, el botón *Ubicar en el mapa* busca las direcciones de los supermercados y
+casas-bodega en OpenStreetMap, las muestra en un mapa y calcula los minutos en auto (servidor público de OSRM).
+Se envían solo direcciones, sin nombres. Si el servicio de rutas no responde, los tiempos se estiman en línea recta.
+
+**Rendimiento** (datos ficticios, computador de 4 núcleos): 100 personas y 3 supermercados ≈ 1 s;
+150 personas y 5 supermercados ≈ 7 s; 250 personas y 5 supermercados ≈ 25 s. Antes de llamar al solver se arma
+una solución inicial rápida, así que incluso si se alcanza el tiempo máximo siempre hay una asignación válida.
+
+## Publicar la app (una sola vez)
+
+La app se publica gratis en [Streamlit Community Cloud](https://streamlit.io/cloud):
+
+1. Entra con la cuenta de GitHub que tiene acceso a este repositorio.
+2. **Create app → Deploy a public app from GitHub**: repositorio `colectatron8000`, rama `main`,
+   archivo principal `streamlit_app.py`. En *Advanced settings* elige Python 3.12.
+3. En **Settings → Secrets** escribe la contraseña de la app:
+
+   ```toml
+   password = "una-clave-para-la-comision"
+   ```
+
+4. Opcional: en **Settings → Sharing** deja la app privada e invita a la comisión por correo.
+
+Cada vez que se actualiza la rama `main`, la app se actualiza sola. Si nadie la usa en 12 horas se "duerme";
+se despierta con un clic.
+
+## Privacidad
+
+- La app no guarda nada: procesa las respuestas en memoria y entrega el Excel.
+- Este repositorio no debe contener datos de personas. Los archivos de `ejemplos/` son inventados.
+  `data/`, `*.xlsx` y `*.csv` fuera de `ejemplos/` están en `.gitignore`.
+- El Form generado incluye un aviso sobre el uso de los datos.
+
+## Para desarrollar
+
+Requiere Python 3.10 o superior.
+
+```bash
+pip install -r requirements-dev.txt
+streamlit run streamlit_app.py   # abre la app en http://localhost:8501
+pytest                           # pruebas
+ruff check . && ruff format .    # estilo
+```
+
+Estructura:
 
 ```text
-colectatron8000/
-├── data/
-│   ├── data1.csv
-│   ├── data2.csv
-│   ├── esquinas.csv
-│   ├── assignments.csv
-│   ├── cronograma_final.csv
-│   └── planner_colecta.xlsx
-├── src/
-│   ├── main.py
-│   ├── data_processing.py
-│   ├── solver.py
-│   ├── generar_planner.py
-│   └── visual.ipynb
-├── requirements.txt
-└── README.md
+streamlit_app.py           Interfaz (las 4 pestañas)
+colectatron/
+├── config.py              Configuración de la colecta y plantillas (financiamiento / insumos)
+├── formulario.py          Lectura del Form: detección de columnas, validación y avisos
+├── plantilla_form.py      Preguntas del Form unificado y script de Google Apps Script que lo crea
+├── solver.py              Modelo de optimización (HiGHS)
+├── inicial.py             Solución inicial rápida para el solver
+├── bodegas.py             Asignación de casas-bodega
+├── geo.py                 Direcciones → mapa y tiempos en auto (OpenStreetMap / OSRM)
+├── reportes.py            Tablas de resultados y planner en Excel
+├── ejemplo.py             Generador de respuestas ficticias
+└── texto.py               Normalización de textos (acentos, emojis)
+tests/                     Pruebas (pytest), incluida una prueba de la app completa
+ejemplos/                  Configuraciones y respuestas ficticias
 ```
 
-## Requisitos
-
-- Python 3.9+
-- Licencia valida de Gurobi (academica o comercial) (Por lo menos alguno de ustedes ya dio opti)
-
-Instalacion de dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Archivos de entrada
-
-### 1. Respuestas del formulario (`--respuestas`)
-
-LAS COLUMNAS DEL .csv DEBEN SER:
-
-- [0] CORREO
-- [1] NOMBRE
-- [2] NÚMERO DE TELÉFONO
-- [3] ASISTENCIA (SI O NO)
-- [4] DÍA (VIERNES, SÁBADO O AMBOS)
-- [5] CANTIDAD DE TURNOS VIERNES
-- [6] PREFERENCIA HORARIOS VIERNES
-- [7] PREFERENCIA ESQUINA VIERNES
-- [8] CANTIDAD DE TURNOS SÁBADO
-- [9] PREFERENCIA HORARIOS SÁBADO
-- [10] PREFERENCIA ESQUINA SÁBADO
-- [11] CANTIDAD DE TURNOS VIERNES (AMBOS)
-- [12] PREFERENCIA HORARIOS VIERNES (AMBOS)
-- [13] CANTIDAD DE TURNOS SÁBADO (AMBOS)
-- [14] PREFERENCIA HORARIOS SÁBADO (AMBOS)
-- [15] PREFERENCIA ESQUINA (AMBOS)
-- [16] JEFE O COMISIONADO
-- [17+] CUALQUIER OTRA COSA (TDI CRUSH, AUTO, MOOD DEL DÍA, GÜAREVER. EL MODELO NO LO TOMA EN CUENTA)
-
-SI EL ARCHIVO NO TIENE ESTA ESTRUCTURA DE COLUMNAS LA WEA SE VA A CAER, TENGA CUIDADO.
-
-
-### 2. Esquinas (`--esquinas`)
-
-Archivo CSV con columna obligatoria:
-
-- `location`: nombre de la esquina/punto de colecta.
-
-Ejemplo (`data/esquinas.csv`):
-
-```csv
-location
-Francisco Bilbao con Tobalaba
-Los Leones con Eliodoro Yañez
-Tobalaba con El Bosque
-```
-
-Si se van a usar otra esquina, basta añadirla en este archivo. Si usan esto para insumos, pueden usar otro archivo `supermercados` con las locaciones y reemplazar el archivo en `main.py`.
-
-## Ejecucion del solver
-
-Comando base:
-
-```bash
-python src/main.py
-```
-
-Argumentos disponibles:
-
-- `--r` ruta al CSV/Excel del formulario (default: `data/data2.csv`)
-- `--esquinas` ruta al CSV/Excel de esquinas (default: `data/esquinas.csv`)
-- `--output` ruta del CSV de salida (default: `data/assignments.csv`)
-- `--time-limit` limite de tiempo del solver en segundos (default: `300`)
-- `--mip-gap` tolerancia MIP (default: `0.01`)
-
-Ejemplo:
-
-```bash
-python src/main.py --r data/data1.csv --output data/assignments.csv
-```
-
-Igual todos los argumentos también vienen dados por default y los pueden cambiar en el archivo.
-
-## Modelo de optimizacion (resumen)
-
-`src/solver.py` implementa un MILP con variables binarias para asignar voluntarios a combinaciones `(fecha, horario, esquina)` segun disponibilidad.
-
-Restricciones principales:
-- Capacidad maxima por bloque (`CAPACIDAD_MAXIMA`).
-- Capacidad minima condicionada por cobertura (`CAPACIDAD_MINIMA`).
-- Un voluntario en una sola esquina por dia.
-- Maximo de turnos por voluntario y por dia segun formulario.
-- Turnos consecutivos por voluntario en el dia.
-
-Funcion objetivo:
-- Maximiza cobertura de bloques (premio alto por bloque cubierto).
-- Prioriza ciertos horarios con pesos (`SLOT_WEIGHTS`).
-
-## Salidas
-
-### 1. CSV de asignaciones
-
-Se genera en la ruta definida por `--output`.
-
-Columnas:
-- `volunteer`
-- `date`
-- `slot`
-- `location`
-
-### 2. Planner en Excel (opcional)
-
-Script:
-
-```bash
-python src/generar_planner.py
-```
-
-Opcionalmente puedes indicar otro CSV de entrada:
-
-```bash
-python src/generar_planner.py data/assignments.csv
-```
-
-Salida por defecto:
-- `data/planner_colecta.xlsx`
-
-
-## Problemas comunes
-
-
-1. LAS COLUMNAS TE QUEDARON DESORDENADAS Y AHORA LA WEA SE CAE. TE DIJE QUE HABÍA QUE ORDENARLAS YNO PESCASTES. 
-2. `ParserError` al leer CSV:
-  - Usar exportacion CSV completa de Google Forms y mantener delimitador consistente.
-  - Verificar que el archivo no este corrupto o truncado.
-3. `GurobiError` o licencia:
-  - Confirmar que la licencia de Gurobi esta activa en el equipo.
-4. Salida vacia:
-  - Revisar disponibilidad real de voluntarios y esquinas.
-  - Probar relajando parametros (`--mip-gap`) o revisando limites de turnos.
+El Form antiguo de financiamiento (17 columnas en orden fijo) se sigue pudiendo leer eligiendo
+*Form antiguo* en la pestaña *Respuestas*.
 
 ## Licencia
 
