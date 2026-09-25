@@ -10,8 +10,11 @@ No hay que instalar nada, editar código ni usar la terminal.
 
 1. **Colecta**: elige la plantilla (financiamiento o insumos) y ajusta días, bloques, lugares y reglas.
    Guarda la configuración (`.json`) para reutilizarla la próxima vez.
-2. **Formulario**: copia el script que genera la app y pégalo en [script.google.com](https://script.google.com).
-   Al ejecutarlo se crea el Google Form con las preguntas exactas que la app sabe leer (paso a paso en la misma pestaña).
+2. **Formulario**: ajusta los textos (invitación con ¿Cuándo? y ¿Dónde?, opciones de rol, la pregunta chiste del final
+   y el link a la foto de la comisión que agradece la inscripción), copia el script que genera la app y pégalo en
+   [script.google.com](https://script.google.com). Al ejecutarlo se crea el Google Form con las preguntas exactas que
+   la app sabe leer (paso a paso en la misma pestaña). Las fotos de las opciones de la pregunta chiste se agregan
+   después, en el editor del Form.
 3. **Respuestas**: descarga las respuestas desde la hoja del Form (*Archivo → Descargar → Excel o CSV*) y súbelas tal cual.
    La app reconoce las columnas por el texto de la pregunta y lista todo lo que haya que revisar
    (respuestas repetidas, lugares mal escritos, gente que dijo que no va, etc.).

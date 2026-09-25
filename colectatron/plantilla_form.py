@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 
-from .config import TIPO_INSUMOS, ConfigColecta
+from .config import TIPO_INSUMOS, ConfigColecta, TextosForm
 
-P_NOMBRE = "Nombre y apellido"
-P_TELEFONO = "Teléfono (WhatsApp)"
-P_ASISTE = "¿Vas a asistir a la colecta?"
-P_ROL = "¿Cuál es tu rol?"
+P_NOMBRE = "Nombre completo"
+P_TELEFONO = "Número de teléfono (formato +569XXXXXXXX)"
+P_ASISTE = "¿Puedes ir a la colecta?"
+P_ROL = "¿Eres...? (declaración formal de rol)"
 P_BLOQUES = "¿Qué bloques puedes?"
 P_MAXIMO = "¿Cuántos bloques como máximo por día?"
 P_LUGARES = "¿En qué lugares puedes?"
@@ -33,9 +33,77 @@ SIN_AUTO = "No tengo auto"
 SIN_BODEGA = "No puedo"
 
 ROLES_POR_DEFECTO = {
-    "financiamiento": ["Comisionado/a", "Familia", "Staff"],
-    "insumos": ["Comisionado/a", "Jefe/a de insumos", "Voluntario/a"],
+    "financiamiento": ["Comisionadx", "Jefx de comisión", "Familia", "Staff"],
+    "insumos": ["Comisionadx", "Jefx de insumos", "Familia", "Staff"],
 }
+
+
+def _enumerar(cosas: list[str]) -> str:
+    if len(cosas) <= 1:
+        return "".join(cosas)
+    return ", ".join(cosas[:-1]) + " y " + cosas[-1]
+
+
+def textos_por_defecto(config: ConfigColecta) -> TextosForm:
+    """Textos con el espíritu del Form de la primera colecta del año."""
+    insumos = config.tipo == TIPO_INSUMOS
+    dias = _enumerar([d.lower() for d in config.dias])
+    lugares = _enumerar(config.nombres_lugares)
+    donde = f"En los supermercados {lugares}." if insumos else f"En las esquinas {lugares}."
+    para_que = "juntar los insumos del proyecto 📦" if insumos else "financiar el proyecto 💰"
+    invitacion = (
+        "¡Atención gente! Se viene una gran colecta y no se la pueden perder 💸💰\n\n"
+        f"¿Cuándo? 📅 El {dias} (completa las fechas).\n"
+        f"¿Dónde? 📍 {donde}\n\n"
+        f"Motívense!! Es muy importante para {para_que}, así que denle con todo 💪💪💪!!\n\n"
+        "LA ASIGNACIÓN DE TURNOS ESTÁ AUTOMATIZADA, ES TU RESPONSABILIDAD LLENAR BIEN EL FORMULARIO. "
+        "(Si ofreces tres bloques, es probable que el algoritmo efectivamente te dé tres bloques seguidos)"
+    )
+    if insumos:
+        return TextosForm(
+            titulo="COLECTA DE INSUMOS 🛒🥫",
+            invitacion=invitacion,
+            roles=list(ROLES_POR_DEFECTO["insumos"]),
+            ayuda_rol="Declaración formal de rol 🫡",
+            opcion_si="Sí, voy con todo 🛒",
+            opcion_no="No, odio a insumos 😔",
+            pregunta_chiste="¿Cuál es tu mood insumístico? (importantísimo)",
+            opciones_chiste=["Enlatado", "Congelado", "Vencido", "Aplastado", "A granel", "En oferta"],
+            chiste_obligatorio=True,
+            despedida="Atentamente, la comisión favorita de todxs, insumos 🛒🛒",
+        )
+    return TextosForm(
+        titulo="COLECTA 🤑💵",
+        invitacion=invitacion,
+        roles=list(ROLES_POR_DEFECTO["financiamiento"]),
+        ayuda_rol="Declaración formal de rol. Si eres comisionadx y no lo declaras, podrías quedar solx en una esquina...",
+        opcion_si="Sí, voy con todo 🤑",
+        opcion_no="No, odio a financiamiento 😔",
+        pregunta_chiste="¿Cuál es tu mood financiero? (importantísimo)",
+        opciones_chiste=["Demacrada", "Debilitado", "Destruida", "Desmejorado", "Depauperada", "Desmedrado"],
+        chiste_obligatorio=True,
+        despedida="Atentamente, la comisión favorita de todxs, financiamiento 🤑🤑",
+    )
+
+
+def textos_de(config: ConfigColecta) -> TextosForm:
+    return config.form or textos_por_defecto(config)
+
+
+def validar_textos(textos: TextosForm) -> list[str]:
+    """Problemas que harían que la app no entienda las respuestas."""
+    from .texto import es_si
+
+    problemas = []
+    if es_si(textos.opcion_si) is not True:
+        problemas.append("La opción para asistir debe empezar con «Sí».")
+    if es_si(textos.opcion_no) is not False:
+        problemas.append("La opción para no asistir debe empezar con «No».")
+    if not textos.roles:
+        problemas.append("Falta al menos una opción de rol.")
+    if textos.pregunta_chiste.strip() and not textos.opciones_chiste:
+        problemas.append("La pregunta chiste necesita al menos una opción.")
+    return problemas
 
 
 def encabezados(config: ConfigColecta) -> list[str]:
@@ -47,24 +115,36 @@ def encabezados(config: ConfigColecta) -> list[str]:
     if config.tipo == TIPO_INSUMOS:
         cols += [P_AUTO, P_BODEGA, P_DIRECCION, P_COMUNA]
     cols.append(P_COMENTARIOS)
+    chiste = textos_de(config).pregunta_chiste.strip()
+    if chiste:
+        cols.append(chiste)
     return cols
 
 
-def script_apps(config: ConfigColecta, roles: list[str] | None = None) -> str:
+def script_apps(config: ConfigColecta) -> str:
     """Código de Google Apps Script que crea el Form con esta configuración.
 
     Se pega en https://script.google.com (Nuevo proyecto), se guarda y se
     ejecuta la función `crearFormulario`.
     """
-    roles = roles or ROLES_POR_DEFECTO.get(config.tipo, ROLES_POR_DEFECTO["financiamiento"])
+    textos = textos_de(config)
     datos = {
-        "titulo": config.nombre,
+        "titulo": textos.titulo,
+        "invitacion": textos.invitacion,
         "dias": config.dias,
         "bloques": config.bloques,
         "lugares": config.nombres_lugares,
-        "roles": roles,
+        "roles": textos.roles,
+        "ayudaRol": textos.ayuda_rol,
+        "si": textos.opcion_si,
+        "no": textos.opcion_no,
         "insumos": config.tipo == TIPO_INSUMOS,
         "maximo": OPCIONES_MAXIMO,
+        "chiste": textos.pregunta_chiste.strip(),
+        "opcionesChiste": textos.opciones_chiste,
+        "chisteObligatorio": textos.chiste_obligatorio,
+        "despedida": textos.despedida,
+        "foto": textos.foto_url.strip(),
     }
     p = {
         "nombre": P_NOMBRE,
@@ -96,7 +176,7 @@ _PLANTILLA_JS = """\
 //    Google pedirá permisos la primera vez: acéptalos.
 // 4. En "Registro de ejecución" aparecerán los links del Form.
 // No cambies los títulos de las preguntas: la app los usa para leer las respuestas.
-// Los chistes y emojis pueden ir en las descripciones (setHelpText), que no se exportan.
+// Los textos de DATOS (invitación, chiste, despedida) sí se pueden cambiar.
 
 const DATOS = __DATOS__;
 
@@ -104,10 +184,12 @@ const P = __PREGUNTAS__;
 
 function crearFormulario() {
   const form = FormApp.create(DATOS.titulo);
+  form.setTitle(DATOS.titulo);
   form.setDescription(
-    'Inscripción de turnos. Tus datos se usan solo para organizar la colecta ' +
-    'y se borran al terminar.'
+    DATOS.invitacion + '\\n\\n' +
+    'Tus datos se usan solo para organizar la colecta y se borran al terminar.'
   );
+  form.setConfirmationMessage('¡Gracias por inscribirte! 🙌 Te avisaremos tus turnos.');
   try {
     form.setEmailCollectionType(FormApp.EmailCollectionType.VERIFIED);
   } catch (e) {
@@ -117,7 +199,6 @@ function crearFormulario() {
   form.addTextItem().setTitle(P.nombre).setRequired(true);
   form.addTextItem()
     .setTitle(P.telefono)
-    .setHelpText('Formato +569XXXXXXXX')
     .setRequired(true)
     .setValidation(
       FormApp.createTextValidation()
@@ -125,25 +206,23 @@ function crearFormulario() {
         .setHelpText('Escribe el número como +569XXXXXXXX')
         .build()
     );
-  form.addListItem().setTitle(P.rol).setChoiceValues(DATOS.roles).setRequired(true);
-
+  form.addMultipleChoiceItem()
+    .setTitle(P.rol)
+    .setHelpText(DATOS.ayudaRol)
+    .setChoiceValues(DATOS.roles)
+    .setRequired(true);
   const asiste = form.addMultipleChoiceItem().setTitle(P.asiste).setRequired(true);
 
-  // Si responde "No", el Form se envía de inmediato.
-  const pagina = form.addPageBreakItem().setTitle('Disponibilidad');
-  asiste.setChoices([
-    asiste.createChoice('Sí', pagina),
-    asiste.createChoice('No', FormApp.PageNavigationType.SUBMIT),
-  ]);
-
+  // --- Disponibilidad ---
+  const disponibilidad = form.addPageBreakItem().setTitle('Disponibilidad 🗓️');
   form.addCheckboxGridItem()
     .setTitle(P.bloques)
-    .setHelpText('Marca todos los bloques en que puedes estar, para cada día.')
+    .setHelpText('Marca todos los bloques en que puedes estar, para cada día 🕐. Coloca todos los que puedas.')
     .setRows(DATOS.bloques)
     .setColumns(DATOS.dias);
   form.addGridItem()
     .setTitle(P.maximo)
-    .setHelpText('Los bloques que te asignemos serán seguidos.')
+    .setHelpText('Ojo: los bloques que te toquen serán seguidos 🤖')
     .setRows(DATOS.dias)
     .setColumns(DATOS.maximo);
   form.addCheckboxItem()
@@ -152,22 +231,62 @@ function crearFormulario() {
     .setRequired(true);
 
   if (DATOS.insumos) {
+    form.addPageBreakItem().setTitle('Automatización automática de autos 🚗');
     form.addCheckboxItem()
       .setTitle(P.auto)
-      .setHelpText('Para llevar los insumos a la casa-bodega. Quien tenga auto hará un turno en el supermercado.')
-      .setChoiceValues(DATOS.dias.concat([P.sinAuto]));
+      .setHelpText('Para llevar los insumos a la casa-bodega. Quien tenga auto también hace un turno en el supermercado.')
+      .setChoiceValues(DATOS.dias.concat([P.sinAuto]))
+      .setRequired(true);
     form.addCheckboxItem()
       .setTitle(P.bodega)
-      .setChoiceValues(DATOS.dias.concat([P.sinBodega]));
+      .setHelpText('Tu casa sería la bodega de los insumos de ese día 🏠📦')
+      .setChoiceValues(DATOS.dias.concat([P.sinBodega]))
+      .setRequired(true);
     form.addTextItem()
       .setTitle(P.direccion)
-      .setHelpText('Solo si puedes guardar insumos. Calle, número y comuna.');
+      .setHelpText('Solo si puedes guardar insumos. Calle y número.');
     form.addTextItem().setTitle(P.comuna);
   }
 
-  form.addParagraphTextItem().setTitle(P.comentarios);
+  form.addParagraphTextItem()
+    .setTitle(P.comentarios)
+    .setHelpText('Cualquier cosa que debamos saber.');
+
+  // --- Final: pregunta chiste y despedida (también para quienes no van) ---
+  const final = form.addPageBreakItem().setTitle('Para terminar ✨');
+  if (DATOS.chiste) {
+    form.addMultipleChoiceItem()
+      .setTitle(DATOS.chiste)
+      .setChoiceValues(DATOS.opcionesChiste)
+      .setRequired(DATOS.chisteObligatorio);
+  }
+  if (DATOS.foto) {
+    try {
+      form.addImageItem().setTitle(DATOS.despedida).setImage(obtenerImagen(DATOS.foto));
+    } catch (e) {
+      form.addSectionHeaderItem().setTitle(DATOS.despedida);
+      Logger.log('No se pudo cargar la foto (' + e + '). Agrégala a mano: Insertar imagen.');
+    }
+  } else {
+    form.addSectionHeaderItem().setTitle(DATOS.despedida);
+    Logger.log('Recuerda agregar la foto de la comisión al final: Insertar imagen.');
+  }
+
+  asiste.setChoices([
+    asiste.createChoice(DATOS.si, disponibilidad),
+    asiste.createChoice(DATOS.no, final),
+  ]);
 
   Logger.log('Para responder: ' + form.getPublishedUrl());
   Logger.log('Para editar:    ' + form.getEditUrl());
+}
+
+// Acepta un link de Google Drive ("compartir con cualquiera con el link") o un link directo a la imagen.
+function obtenerImagen(url) {
+  const id = url.match(/[-\\w]{25,}/);
+  if (url.indexOf('drive.google.com') >= 0 && id) {
+    return DriveApp.getFileById(id[0]).getBlob();
+  }
+  return UrlFetchApp.fetch(url).getBlob();
 }
 """
