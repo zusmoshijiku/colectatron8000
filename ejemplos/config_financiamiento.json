@@ -43,6 +43,7 @@
     }
   ],
   "roles_jefe": [
+    "Jefx de comisión",
     "Familia",
     "Staff"
   ],
@@ -65,5 +66,6 @@
     }
   },
   "tiempo_limite_s": 60,
-  "mip_gap": 0.01
+  "mip_gap": 0.01,
+  "form": null
 }

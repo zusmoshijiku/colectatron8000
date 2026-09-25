@@ -51,7 +51,8 @@ _CALLES = [
 
 def respuestas_ejemplo(config: ConfigColecta, n: int = 40, semilla: int = 8000) -> pd.DataFrame:
     rng = random.Random(semilla)
-    roles = pf.ROLES_POR_DEFECTO.get(config.tipo, pf.ROLES_POR_DEFECTO["financiamiento"])
+    textos = pf.textos_de(config)
+    roles = textos.roles
     insumos = config.tipo == TIPO_INSUMOS
     nombres = [f"{a} {b}" for a in _NOMBRES for b in _APELLIDOS]
     rng.shuffle(nombres)
@@ -63,9 +64,11 @@ def respuestas_ejemplo(config: ConfigColecta, n: int = 40, semilla: int = 8000) 
         fila[pf.COL_CORREO] = f"persona{i + 1:02d}@ejemplo.cl"
         fila[pf.P_NOMBRE] = nombre
         fila[pf.P_TELEFONO] = f"+5690000{i + 1:04d}"
-        fila[pf.P_ROL] = rng.choices(roles, weights=[5, 3, 2][: len(roles)])[0]
+        fila[pf.P_ROL] = rng.choices(roles, weights=([5, 1, 2, 2] + [1] * len(roles))[: len(roles)])[0]
         asiste = rng.random() > 0.1
-        fila[pf.P_ASISTE] = "Sí" if asiste else "No"
+        fila[pf.P_ASISTE] = textos.opcion_si if asiste else textos.opcion_no
+        if textos.pregunta_chiste.strip() and textos.opciones_chiste:
+            fila[textos.pregunta_chiste.strip()] = rng.choice(textos.opciones_chiste)
         if asiste:
             dias = [d for d in config.dias if rng.random() < 0.65] or [rng.choice(config.dias)]
             marcados: dict[str, list[str]] = {b: [] for b in config.bloques}

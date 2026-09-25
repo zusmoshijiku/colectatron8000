@@ -79,3 +79,31 @@ def test_script_del_form_incluye_configuracion():
     assert "function crearFormulario" in codigo
     for texto in config.dias + config.nombres_lugares + config.bloques:
         assert texto in codigo
+
+
+def test_textos_del_form():
+    from colectatron.config import TextosForm, config_financiamiento
+    from colectatron.plantilla_form import textos_de, textos_por_defecto, validar_textos
+    from colectatron.texto import es_si
+
+    for config in (config_financiamiento(), config_insumos()):
+        textos = textos_de(config)
+        assert validar_textos(textos) == []
+        assert es_si(textos.opcion_si) is True and es_si(textos.opcion_no) is False
+        codigo = script_apps(config)
+        for texto in [textos.pregunta_chiste, textos.despedida, textos.opcion_si, *textos.opciones_chiste]:
+            assert texto in codigo
+        for lugar in config.nombres_lugares:
+            assert lugar in textos.invitacion
+
+    # Textos propios: se guardan en el JSON y se usan en el script.
+    config = config_insumos()
+    config.form = replace(
+        textos_por_defecto(config), pregunta_chiste="¿Qué insumo eres?", foto_url="https://ejemplo.cl/foto.jpg"
+    )
+    assert ConfigColecta.from_json(config.to_json()) == config
+    assert "¿Qué insumo eres?" in script_apps(config)
+    assert "https://ejemplo.cl/foto.jpg" in script_apps(config)
+
+    malos = TextosForm(**{**config.form.__dict__, "opcion_si": "Voy con todo", "opcion_no": "Nop"})
+    assert len(validar_textos(malos)) == 2
