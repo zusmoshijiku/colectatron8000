@@ -29,7 +29,13 @@ from colectatron.formulario import (
     leer_tabla,
     valores_de_rol,
 )
-from colectatron.plantilla_form import script_apps, textos_de, textos_por_defecto, validar_textos
+from colectatron.plantilla_form import (
+    resultados_publicados,
+    roles_financiamiento,
+    script_apps,
+    textos_por_defecto,
+    validar_textos,
+)
 from colectatron.reportes import cobertura, planner_excel, por_persona, resumen, sin_turno
 from colectatron.solver import resolver
 
@@ -292,8 +298,16 @@ ni las opciones** de las preguntas de disponibilidad: la app los usa para leer l
 """
     )
 
-    textos = textos_de(config)
     vf = f"{ESTADO['version_config']}_{ESTADO.get('version_form', 0)}"
+    resultados = None
+    if config.tipo != TIPO_INSUMOS:
+        resultados = st.toggle(
+            "Ya salieron los resultados de inscripción a los trabajos",
+            resultados_publicados(),
+            key=f"f_resultados_{vf}",
+            help="Salen a inicios de junio. Antes, los roles son Familia y Voluntario/a; después, también Staff.",
+        )
+    textos = config.form or textos_por_defecto(config, resultados)
 
     st.markdown("#### Inicio del Form")
     f_titulo = st.text_input("Título", textos.titulo, key=f"f_titulo_{vf}")
@@ -307,8 +321,19 @@ ni las opciones** de las preguntas de disponibilidad: la app los usa para leer l
     c1, c2 = st.columns(2)
     f_si = c1.text_input("Opción para ir (debe empezar con «Sí»)", textos.opcion_si, key=f"f_si_{vf}")
     f_no = c2.text_input("Opción para no ir (debe empezar con «No»)", textos.opcion_no, key=f"f_no_{vf}")
-    f_roles = c1.text_input("Opciones de rol (separadas por coma)", ", ".join(textos.roles), key=f"f_roles_{vf}")
-    f_ayuda_rol = c2.text_input("Descripción de la pregunta de rol", textos.ayuda_rol, key=f"f_ayuda_{vf}")
+    if config.tipo == TIPO_INSUMOS:
+        # En insumos siempre hay un jefe de la comisión en el supermercado: no se pregunta el rol.
+        f_roles, f_ayuda_rol = "", ""
+    else:
+        roles_guardados = config.form.roles if config.form else []
+        propios = roles_guardados and roles_guardados not in (roles_financiamiento(True), roles_financiamiento(False))
+        f_roles = c1.text_input(
+            "Opciones de rol (separadas por coma)",
+            ", ".join(roles_guardados if propios else roles_financiamiento(resultados)),
+            key=f"f_roles_{vf}_{resultados}",
+            help="Familia y Staff cuentan como jefes: pueden quedar a cargo de una esquina.",
+        )
+        f_ayuda_rol = c2.text_input("Descripción de la pregunta de rol", textos.ayuda_rol, key=f"f_ayuda_{vf}")
 
     st.markdown("#### Final del Form")
     st.caption("Lo ven todas las personas, también quienes responden que no van. La app no usa estas respuestas.")
@@ -347,6 +372,7 @@ ni las opciones** de las preguntas de disponibilidad: la app los usa para leer l
         despedida=f_despedida.strip(),
         foto_url=f_foto.strip(),
     )
+    # Solo se guardan si difieren de lo que la plantilla daría hoy (el script usa esa misma regla).
     config.form = None if nuevos == textos_por_defecto(config) else nuevos
     if config.form is not None and st.button("Volver a los textos de la plantilla"):
         config.form = None

@@ -43,10 +43,8 @@
     }
   ],
   "roles_jefe": [
-    "Jefx de comisión",
     "Familia",
-    "Staff",
-    "Voluntario/a"
+    "Staff"
   ],
   "reglas": {
     "nadie_solo": true,

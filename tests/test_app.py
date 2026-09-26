@@ -79,3 +79,16 @@ def test_textos_del_form_se_guardan_en_la_configuracion():
     opcion_si = next(t for t in at.text_input if t.label.startswith("Opción para ir"))
     opcion_si.input("Voy con todo").run()
     assert at.error and not at.code
+
+
+def test_roles_de_financiamiento_cambian_con_los_resultados():
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    at.selectbox[0].select("financiamiento").run()
+    interruptor = next(t for t in at.toggle if t.label.startswith("Ya salieron los resultados"))
+    interruptor.set_value(False).run()
+    assert not at.exception
+    assert '"roles": [\n    "Familia",\n    "Voluntario/a"\n  ]' in at.code[0].value
+    interruptor = next(t for t in at.toggle if t.label.startswith("Ya salieron los resultados"))
+    interruptor.set_value(True).run()
+    assert '"Staff"' in at.code[0].value
