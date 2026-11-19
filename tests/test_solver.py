@@ -77,6 +77,27 @@ def test_maximo_de_dias_por_persona(config_chica):
     assert len(r.asignaciones) == 5
 
 
+def test_equilibrio_reparte_entre_dias(config_chica):
+    # Cuatro personas pueden ir cualquiera de los dos días (un bloque, un lugar, capacidad 3).
+    # Cubrir ambos días deja 3+1 o 2+2; con el premio por repartir gana 2+2.
+    config = replace(
+        config_chica,
+        dias=["Sábado", "Domingo"],
+        bloques=BLOQUES[:1],
+        lugares=[Lugar("A", capacidad=3)],
+        max_dias_por_persona=1,
+    )
+    vols = []
+    for i in range(4):
+        v = persona(f"p{i}", bloques=BLOQUES[:1], lugares=["A"])
+        v.disponibilidad["Domingo"] = BLOQUES[:1]
+        v.max_turnos["Domingo"] = 1
+        v.lugares["Domingo"] = ["A"]
+        vols.append(v)
+    r = resolver(replace(config, pesos=replace(config.pesos, equilibrio=100)), vols)
+    assert r.asignaciones["dia"].value_counts().to_dict() == {"Sábado": 2, "Domingo": 2}
+
+
 def test_auto_al_cierre_avisa_si_no_hay(config_chica):
     config = replace(config_chica, lugares=[Lugar("A")], reglas=Reglas(nadie_solo=False, auto_al_cierre=True))
     r = resolver(config, [persona("sin_auto", lugares=["A"])])

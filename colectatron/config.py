@@ -72,6 +72,9 @@ class Pesos:
     jefe: float = 500  # por cada turno asignado a un jefe
     falta_auto_al_cierre: float = 400  # castigo si el cierre queda sin auto
     auto_presente: float = 20  # por cada bloque con alguien con auto
+    # Premio por la 2.ª persona de un bloque; la 3.ª vale la mitad, la 4.ª un cuarto…
+    # Reparte a la gente entre bloques, lugares y días en vez de llenar unos y dejar otros con una persona.
+    equilibrio: float = 100
     bloque: dict[str, float] = field(default_factory=dict)  # peso por turno; 10 si no aparece
 
     def peso_bloque(self, bloque: str) -> float:
@@ -183,7 +186,7 @@ def config_financiamiento() -> ConfigColecta:
         roles_jefe=["Familia", "Staff"],
         max_dias_por_persona=1,
         reglas=Reglas(nadie_solo=True),
-        pesos=Pesos(bloque=dict(PESOS_BLOQUE_FINANCIAMIENTO)),
+        pesos=Pesos(equilibrio=100, bloque=dict(PESOS_BLOQUE_FINANCIAMIENTO)),
     )
 
 
@@ -209,7 +212,7 @@ def config_insumos() -> ConfigColecta:
             autos_durante_el_dia=True,
             asignar_bodegas=True,
         ),
-        pesos=Pesos(jefe=0, bloque=dict(PESOS_BLOQUE_INSUMOS)),
+        pesos=Pesos(jefe=0, equilibrio=100, bloque=dict(PESOS_BLOQUE_INSUMOS)),
     )
 
 

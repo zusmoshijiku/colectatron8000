@@ -72,7 +72,13 @@ Reglas que se activan en la configuración:
 | Casas-bodega | — | ✅ | Asigna a cada supermercado abierto una casa donde guardar lo recolectado, de preferencia en la misma comuna o la más cercana en auto. |
 
 Qué busca, en orden de importancia: cubrir bloques, que cada persona tenga al menos un turno, dar prioridad a los jefes
-(si corresponde) y preferir los bloques centrales del día. Los pesos se pueden cambiar en *Opciones avanzadas*.
+(si corresponde), repartir a la gente (que un bloque tenga 2 personas vale más que pasar otro de 3 a 4, así no se
+llenan unos lugares o días mientras otros quedan con una sola persona) y preferir los bloques centrales del día.
+Los pesos se pueden cambiar en *Opciones avanzadas*.
+
+Si un día queda mucho más cargado que otro, revisa primero la oferta (cuánta gente marcó bloques ese día). Con el
+máximo de días por persona, quien ofrece ambos días va a uno solo, así que repartir más entre días solo es posible
+si hay gente que ofreció los dos.
 
 **Mapa y tiempos de traslado**: en insumos, el botón *Ubicar en el mapa* busca las direcciones de los supermercados y
 casas-bodega en OpenStreetMap, las muestra en un mapa y calcula los minutos en auto (servidor público de OSRM).

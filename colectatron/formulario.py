@@ -133,7 +133,8 @@ CAMPOS: dict[str, Campo] = {
     "asiste": Campo("¿Asiste?", ("asisti", "vas a ir", "puedes ir", "asistencia")),
     "rol": Campo("Rol", ("rol", "eres")),
     "direccion": Campo("Dirección de la casa-bodega", ("direccion", "domicilio")),
-    "bodega": Campo("Días que puede guardar insumos", ("guardar", "bodega")),
+    # "recibir": hubo Forms que preguntaron "¿Qué días podrías recibir insumos en tu casa?".
+    "bodega": Campo("Días que puede guardar insumos", ("guardar", "bodega", "recibir")),
     "auto": Campo("Días con auto", ("auto",)),
     "comuna": Campo("Comuna", ("comuna",)),
     "lugares": Campo("Lugares", ("lugar", "esquina", "supermercado"), excluir=("bloque", "maximo")),
@@ -336,6 +337,21 @@ def leer_unificado(df: pd.DataFrame, config: ConfigColecta, mapa: dict[str, str 
             avisos.append(Aviso(f"No se encontró la columna «{etiqueta}». Elígela a mano.", nivel="error"))
     if any(a.nivel == "error" for a in avisos):
         return Lectura([], [], avisos, len(df))
+    # Si la regla las usa y no hay columna, todos quedarían "sin auto" o "sin casa": que no pase en silencio.
+    reglas = config.reglas
+    necesarias = []
+    if reglas.asignar_bodegas:
+        necesarias += ["bodega", "direccion"]
+    if reglas.auto_al_cierre or reglas.autos_durante_el_dia:
+        necesarias.append("auto")
+    for clave in necesarias:
+        if not mapa.get(clave):
+            avisos.append(
+                Aviso(
+                    f"No se encontró la columna «{CAMPOS[clave].etiqueta}»: se leerá como si nadie hubiera "
+                    "respondido. Elígela a mano en «Columnas reconocidas» si está con otro nombre."
+                )
+            )
 
     grillas = grillas_del_archivo(list(df.columns))
     por_clave_bloque = {normalizar_bloque(b): b for b in config.bloques}
