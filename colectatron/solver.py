@@ -11,6 +11,7 @@ Restricciones siempre activas
     * una persona está en un solo lugar por día
     * nadie hace más bloques de los que ofreció ese día
     * los bloques de una persona en un día son seguidos
+    * nadie va más días que `config.max_dias_por_persona` (0 = sin límite)
 
 Reglas activables (ver `config.Reglas`)
     * nadie solo: quien no es jefe no puede quedar solo en un bloque
@@ -163,6 +164,17 @@ def resolver(
                 inicios.append(actual)
         if len(inicios) > 1:
             h.addConstr(_qsum(h, inicios) <= 1)
+
+    # --- Días por persona ----------------------------------------------------
+    # y[v, d, l] vale 1 si v va el día d (a lo más un lugar por día), así que
+    # la suma de y de una persona cuenta sus días.
+    if config.max_dias_por_persona > 0:
+        y_por_persona = defaultdict(list)
+        for (v, d, _), var in y.items():
+            y_por_persona[v].append((d, var))
+        for items in y_por_persona.values():
+            if len({d for d, _ in items}) > config.max_dias_por_persona:
+                h.addConstr(_qsum(h, (var for _, var in items)) <= config.max_dias_por_persona)
 
     # --- Objetivo por turno y por persona ------------------------------------
     for (v, _, s, _), var in x.items():

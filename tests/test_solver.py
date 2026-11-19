@@ -60,6 +60,23 @@ def test_prioriza_que_todos_tengan_turno(config_chica):
     assert set(r.asignaciones["id"]) == {"a", "b"}
 
 
+def test_maximo_de_dias_por_persona(config_chica):
+    # Ofrece 2 bloques el sábado y 3 el domingo: con tope 1 va un solo día.
+    config = replace(config_chica, dias=["Sábado", "Domingo"])
+    v = persona("p", maximo=2)
+    v.disponibilidad["Domingo"] = list(BLOQUES)
+    v.max_turnos["Domingo"] = 3
+    v.lugares["Domingo"] = ["A", "B"]
+
+    r = resolver(replace(config, max_dias_por_persona=1), [v])
+    assert r.asignaciones["dia"].nunique() == 1
+    assert len(r.asignaciones) == 3  # elige el día en que puede hacer más bloques
+
+    r = resolver(replace(config, max_dias_por_persona=0), [v])
+    assert r.asignaciones["dia"].nunique() == 2
+    assert len(r.asignaciones) == 5
+
+
 def test_auto_al_cierre_avisa_si_no_hay(config_chica):
     config = replace(config_chica, lugares=[Lugar("A")], reglas=Reglas(nadie_solo=False, auto_al_cierre=True))
     r = resolver(config, [persona("sin_auto", lugares=["A"])])
@@ -117,6 +134,9 @@ def test_solucion_inicial_cumple_reglas_duras():
 
         por_bloque = Counter((d, s, lugar) for _, d, s, lugar in inicial)
         assert all(n <= config.lugar(lugar).capacidad for (_, _, lugar), n in por_bloque.items())
+
+        dias_por_persona = Counter(v for v, _ in {(v, d) for v, d, _, _ in inicial})
+        assert max(dias_por_persona.values()) <= config.max_dias_por_persona
 
         orden = {s: i for i, s in enumerate(config.bloques)}
         for v in vols:

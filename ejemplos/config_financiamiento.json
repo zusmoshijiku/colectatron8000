@@ -46,6 +46,7 @@
     "Familia",
     "Staff"
   ],
+  "max_dias_por_persona": 1,
   "reglas": {
     "nadie_solo": true,
     "horario_continuo_por_lugar": false,

@@ -207,6 +207,15 @@ with tab_colecta:
             key=f"r4_{v}",
             help="Prefiere que haya personas con auto en varios bloques, para hacer traslados intermedios.",
         )
+        max_dias = st.number_input(
+            "Máximo de días por persona (0 = sin límite)",
+            min_value=0,
+            max_value=7,
+            value=cfg.max_dias_por_persona,
+            step=1,
+            key=f"r6_{v}",
+            help="Aunque alguien ofrezca bloques varios días, va como máximo esta cantidad de días.",
+        )
 
     with st.expander("Opciones avanzadas"):
         p = cfg.pesos
@@ -249,6 +258,7 @@ with tab_colecta:
             if pd.notna(f["Nombre"]) and str(f["Nombre"]).strip()
         ],
         roles_jefe=cfg.roles_jefe,
+        max_dias_por_persona=int(max_dias),
         reglas=Reglas(nadie_solo, continuo, auto_cierre, autos_dia, asignar_casas),
         pesos=Pesos(
             cobertura=cobertura_peso,

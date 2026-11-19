@@ -148,6 +148,14 @@ def script_apps(config: ConfigColecta) -> str:
     ejecuta la función `crearFormulario`.
     """
     textos = textos_de(config)
+    ayuda_maximo = "Ojo: los bloques que te toquen serán seguidos 🤖"
+    tope_dias = config.max_dias_por_persona
+    if 0 < tope_dias < len(config.dias):
+        ayuda_maximo += (
+            ". Aunque marques varios días, te tocará solo uno."
+            if tope_dias == 1
+            else f". Aunque marques más días, te tocarán como máximo {tope_dias}."
+        )
     datos = {
         "titulo": textos.titulo,
         "invitacion": textos.invitacion,
@@ -160,6 +168,7 @@ def script_apps(config: ConfigColecta) -> str:
         "no": textos.opcion_no,
         "insumos": config.tipo == TIPO_INSUMOS,
         "maximo": OPCIONES_MAXIMO,
+        "ayudaMaximo": ayuda_maximo,
         "chiste": textos.pregunta_chiste.strip(),
         "opcionesChiste": textos.opciones_chiste,
         "chisteObligatorio": textos.chiste_obligatorio,
@@ -244,7 +253,7 @@ function crearFormulario() {
     .setColumns(DATOS.dias);
   form.addGridItem()
     .setTitle(P.maximo)
-    .setHelpText('Ojo: los bloques que te toquen serán seguidos 🤖')
+    .setHelpText(DATOS.ayudaMaximo)
     .setRows(DATOS.dias)
     .setColumns(DATOS.maximo);
   form.addCheckboxItem()
