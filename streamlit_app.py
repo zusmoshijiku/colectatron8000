@@ -233,7 +233,17 @@ with tab_colecta:
         auto_presente = a2.number_input(
             "Premio por bloque con auto", 0.0, value=float(p.auto_presente), step=5.0, key=f"p5_{v}"
         )
-        tiempo = a3.number_input(
+        equilibrio = a3.number_input(
+            "Premio por repartir la gente",
+            0.0,
+            value=float(p.equilibrio),
+            step=25.0,
+            key=f"p6_{v}",
+            help="Premio por la 2.ª persona de un bloque; la 3.ª vale la mitad y la 4.ª un cuarto. "
+            "Más alto = la gente se reparte entre bloques, lugares y días en vez de llenar unos y dejar otros "
+            "con una sola persona (a costa de algunos turnos). 0 = no se considera.",
+        )
+        tiempo = a1.number_input(
             "Tiempo máximo del solver (s)", 5.0, 600.0, value=float(cfg.tiempo_limite_s), step=5.0, key=f"t_{v}"
         )
 
@@ -266,6 +276,7 @@ with tab_colecta:
             jefe=jefe_peso,
             falta_auto_al_cierre=falta_auto,
             auto_presente=auto_presente,
+            equilibrio=equilibrio,
             bloque={
                 str(f["Bloque"]).strip(): float(f["Peso"])
                 for _, f in bloques_validos.iterrows()

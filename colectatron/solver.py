@@ -129,6 +129,14 @@ def resolver(
         h.addConstr(total <= tope * c[d, s, lugar])
         objetivo.append(pesos.cobertura * c[d, s, lugar])
 
+        if pesos.equilibrio > 0 and tope > 1:
+            # Rendimientos decrecientes: pasar de 1 a 2 personas vale más que de 3 a 4. Como se
+            # maximiza y los premios bajan, las variables se llenan en orden sin necesitar binarias.
+            extras = [h.addVariable(lb=0, ub=1) for _ in range(tope - 1)]
+            h.addConstr(_qsum(h, extras) <= total - c[d, s, lugar])
+            for k, extra in enumerate(extras):
+                objetivo.append(pesos.equilibrio / 2**k * extra)
+
         if reglas.nadie_solo:
             for v, var in items:
                 if not por_id[v].es_jefe:

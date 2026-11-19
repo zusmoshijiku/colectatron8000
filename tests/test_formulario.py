@@ -55,6 +55,20 @@ def test_detecta_columnas_en_cualquier_orden():
     assert detectar_columnas(df)["bloques"] == pf.P_BLOQUES
 
 
+def test_detecta_la_pregunta_de_bodega_con_otra_redaccion():
+    config = config_insumos()
+    df = respuestas_ejemplo(config, 5).rename(columns={pf.P_BODEGA: "¿Qué días podrías recibir insumos en tu casa?"})
+    mapa = detectar_columnas(df)
+    assert mapa["bodega"] == "¿Qué días podrías recibir insumos en tu casa?"
+    assert mapa["direccion"] == pf.P_DIRECCION
+    assert any(v.bodega for v in leer_respuestas(df, config).voluntarios)
+
+    # Si la pregunta no se reconoce, se avisa en vez de leer en silencio que nadie puede guardar.
+    df = df.rename(columns={"¿Qué días podrías recibir insumos en tu casa?": "¿Tu casa sirve?"})
+    avisos = [a.mensaje for a in leer_respuestas(df, config).avisos]
+    assert any("Días que puede guardar insumos" in a for a in avisos)
+
+
 def _fila(config, **cambios):
     fila = dict.fromkeys(pf.encabezados(config), "")
     fila.update(cambios)

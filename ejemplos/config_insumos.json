@@ -50,6 +50,7 @@
     "jefe": 0,
     "falta_auto_al_cierre": 400,
     "auto_presente": 20,
+    "equilibrio": 100,
     "bloque": {
       "10:00 - 11:30": 8,
       "11:30 - 13:00": 8,
