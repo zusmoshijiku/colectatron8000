@@ -11,6 +11,7 @@ Estas funciones envían direcciones a terceros: la app pide confirmación antes.
 
 from __future__ import annotations
 
+import io
 import math
 import time
 from dataclasses import dataclass
@@ -19,6 +20,9 @@ import requests
 
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 OSRM = "https://router.project-osrm.org/table/v1/driving/"
+TESELAS = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+ATRIBUCION = "© OpenStreetMap contributors"
+RADIO_TIERRA_M = 6378137.0  # el de Web Mercator
 AGENTE = "colectatron8000 (asignacion de turnos de voluntariado)"
 
 # Para la estimación sin OSRM: calles no son rectas (factor 1,3) y ~25 km/h en ciudad.
@@ -90,3 +94,48 @@ def tiempos_auto(origenes: list[Punto], destinos: list[Punto]) -> tuple[list[lis
     except (requests.RequestException, ValueError, KeyError):
         pass
     return [[minutos_estimados(a, b) for b in destinos] for a in origenes], False
+
+
+def mercator(lat: float, lon: float) -> tuple[float, float]:
+    """Coordenadas Web Mercator en metros (las mismas de las teselas de OpenStreetMap)."""
+    x = math.radians(lon) * RADIO_TIERRA_M
+    y = math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)) * RADIO_TIERRA_M
+    return x, y
+
+
+def fondo_mapa(x0: float, x1: float, y0: float, y1: float, max_teselas: int = 16):
+    """Imagen de OpenStreetMap que cubre el rectángulo (en metros Web Mercator).
+
+    Devuelve `(imagen, (xmin, xmax, ymin, ymax))` o None si no se pudo descargar.
+    Elige el mayor zoom que use a lo más `max_teselas` teselas (política de uso de OSM).
+    """
+    from PIL import Image
+
+    mundo = 2 * math.pi * RADIO_TIERRA_M
+
+    def indice(x: float, y: float, z: int) -> tuple[int, int]:
+        n = 2**z
+        return int((x + mundo / 2) / mundo * n), int((mundo / 2 - y) / mundo * n)
+
+    for z in range(17, 9, -1):
+        (tx0, ty0), (tx1, ty1) = indice(x0, y1, z), indice(x1, y0, z)
+        if (tx1 - tx0 + 1) * (ty1 - ty0 + 1) <= max_teselas:
+            break
+    imagen = Image.new("RGB", ((tx1 - tx0 + 1) * 256, (ty1 - ty0 + 1) * 256))
+    try:
+        for tx in range(tx0, tx1 + 1):
+            for ty in range(ty0, ty1 + 1):
+                resp = requests.get(TESELAS.format(z=z, x=tx, y=ty), headers={"User-Agent": AGENTE}, timeout=10)
+                resp.raise_for_status()
+                tesela = Image.open(io.BytesIO(resp.content)).convert("RGB")
+                imagen.paste(tesela, ((tx - tx0) * 256, (ty - ty0) * 256))
+    except (requests.RequestException, OSError):
+        return None
+    lado = mundo / 2**z
+    extension = (
+        tx0 * lado - mundo / 2,
+        (tx1 + 1) * lado - mundo / 2,
+        mundo / 2 - (ty1 + 1) * lado,
+        mundo / 2 - ty0 * lado,
+    )
+    return imagen, extension

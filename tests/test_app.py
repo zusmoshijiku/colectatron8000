@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import pathlib
+import zipfile
 
 from streamlit.testing.v1 import AppTest
 
@@ -54,6 +56,7 @@ def test_mapa_de_casas_bodega(monkeypatch):
 
     monkeypatch.setattr(geo, "geocodificar", falso_geocodificar)
     monkeypatch.setattr(geo, "tiempos_auto", lambda o, d: ([[5.0 + j for j in range(len(d))] for _ in o], True))
+    monkeypatch.setattr(geo, "fondo_mapa", lambda *a, **k: None)  # sin descargar teselas
 
     at = AppTest.from_file(APP, default_timeout=120)
     at.run()
@@ -65,6 +68,12 @@ def test_mapa_de_casas_bodega(monkeypatch):
     at.run()
     assert not at.exception
     assert not at.error
+
+    _boton(at, "Preparar informe").click()
+    at.run()
+    assert not at.exception
+    contenido = zipfile.ZipFile(io.BytesIO(at.session_state["informe"])).namelist()
+    assert "informe.tex" in contenido and "figuras/mapa.png" in contenido
 
 
 def test_textos_del_form_se_guardan_en_la_configuracion():
