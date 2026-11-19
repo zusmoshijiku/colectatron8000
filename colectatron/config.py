@@ -107,6 +107,8 @@ class ConfigColecta:
     lugares: list[Lugar]
     # Respuestas de la pregunta de rol que cuentan como jefe (texto exacto o parcial).
     roles_jefe: list[str] = field(default_factory=list)
+    # Cuántos días distintos puede ir cada persona, aunque ofrezca más (0 = sin límite).
+    max_dias_por_persona: int = 1
     reglas: Reglas = field(default_factory=Reglas)
     pesos: Pesos = field(default_factory=Pesos)
     tiempo_limite_s: float = 60
@@ -142,6 +144,8 @@ class ConfigColecta:
                 problemas.append("Hay un lugar sin nombre.")
             if lugar.capacidad < 1:
                 problemas.append(f"La capacidad de «{lugar.nombre}» debe ser al menos 1.")
+        if self.max_dias_por_persona < 0:
+            problemas.append("El máximo de días por persona no puede ser negativo (0 = sin límite).")
         return problemas
 
     def to_json(self) -> str:
@@ -177,6 +181,7 @@ def config_financiamiento() -> ConfigColecta:
         ],
         # Familia y Staff pueden quedar a cargo de una esquina (solos); Voluntario/a no.
         roles_jefe=["Familia", "Staff"],
+        max_dias_por_persona=1,
         reglas=Reglas(nadie_solo=True),
         pesos=Pesos(bloque=dict(PESOS_BLOQUE_FINANCIAMIENTO)),
     )
@@ -196,6 +201,7 @@ def config_insumos() -> ConfigColecta:
         ],
         # Siempre hay un jefe de insumos en el local: no hace falta priorizar ni proteger.
         roles_jefe=[],
+        max_dias_por_persona=1,
         reglas=Reglas(
             nadie_solo=False,
             horario_continuo_por_lugar=True,

@@ -41,6 +41,8 @@ Siempre se cumple:
 - Máximo de personas por lugar y bloque (capacidad de cada lugar).
 - Cada persona está en un solo lugar por día.
 - Nadie hace más bloques de los que ofreció, y sus bloques de un día son seguidos.
+- Nadie va más días que el *máximo de días por persona* (por defecto 1, aunque ofrezca bloques en varios días;
+  0 = sin límite). El Form lo advierte junto a la pregunta del máximo de bloques.
 
 Reglas que se activan en la configuración:
 

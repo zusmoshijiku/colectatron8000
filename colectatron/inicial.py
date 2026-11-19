@@ -3,7 +3,7 @@
 Con muchas personas y lugares, HiGHS puede demorar en encontrar su primera
 solución. Esta heurística arma rápido una asignación que cumple todas las
 restricciones duras (capacidad, un lugar por día, máximo de bloques, bloques
-seguidos, nadie solo y horario continuo por lugar) y se la entrega al solver
+seguidos, máximo de días, nadie solo y horario continuo por lugar) y se la entrega al solver
 como punto de partida. El solver luego la mejora.
 """
 
@@ -67,9 +67,13 @@ def solucion_inicial(
                 total += pesos.auto_presente
         return total
 
+    def sin_dias_libres(v: str) -> bool:
+        tope = config.max_dias_por_persona
+        return tope > 0 and sum(vv == v for vv, _ in turnos) >= tope
+
     def asignar(pendientes: list[tuple[str, str]]) -> None:
         for v, d in pendientes:
-            if (v, d) in turnos:
+            if (v, d) in turnos or sin_dias_libres(v):
                 continue
             maximo = por_id[v].max_turnos.get(d, 0)
             mejor, mejor_turno = None, None

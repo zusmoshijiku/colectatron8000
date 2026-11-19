@@ -36,6 +36,7 @@
     }
   ],
   "roles_jefe": [],
+  "max_dias_por_persona": 1,
   "reglas": {
     "nadie_solo": false,
     "horario_continuo_por_lugar": true,

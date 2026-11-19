@@ -79,6 +79,9 @@ def test_script_del_form_incluye_configuracion():
     assert "function crearFormulario" in codigo
     for texto in config.dias + config.nombres_lugares + config.bloques:
         assert texto in codigo
+    # El Form avisa el tope de días solo si de verdad limita.
+    assert "te tocará solo uno" in codigo
+    assert "te tocará" not in script_apps(replace(config, max_dias_por_persona=0))
 
 
 def test_textos_del_form():
