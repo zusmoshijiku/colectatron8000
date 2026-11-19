@@ -21,7 +21,8 @@ No hay que instalar nada, editar código ni usar la terminal.
    La app reconoce las columnas por el texto de la pregunta y lista todo lo que haya que revisar
    (respuestas repetidas, lugares mal escritos, gente que dijo que no va, etc.).
 4. **Resultados**: presiona *Asignar turnos*. Verás la ocupación de cada bloque, los turnos por persona,
-   quién quedó sin turno y los avisos (por ejemplo, un cierre sin auto). Descarga el planner en Excel.
+   quién quedó sin turno y los avisos (por ejemplo, un cierre sin auto). Descarga el planner en Excel y,
+   si quieres, el informe en LaTeX.
 
 ¿Quieres probar sin datos reales? En la pestaña *Respuestas* está el botón **Probar con respuestas de ejemplo**.
 También hay archivos ficticios en [`ejemplos/`](ejemplos/).
@@ -31,6 +32,22 @@ También hay archivos ficticios en [`ejemplos/`](ejemplos/).
 - Una hoja por día: bloques × lugares, con nombre y teléfono (⭐ jefe, 🚗 tiene auto ese día).
 - **Por persona**: dónde y a qué hora le toca a cada uno (para avisar por WhatsApp).
 - **Sin turno**, **Casas-bodega** (insumos) y **Avisos**.
+
+### El informe en LaTeX
+
+En *Resultados*, **Preparar informe** arma un `.zip` con `informe.tex` y la carpeta `figuras/`. Se sube tal cual a
+[Overleaf](https://www.overleaf.com) (*New project → Upload project*) o se compila con `pdflatex`. Incluye:
+
+- Resumen (respuestas, personas con turno, bloques cubiertos, horas de colecta, bloques por persona) y alertas,
+  más lo que hay que revisar en las respuestas.
+- Gráficos de ocupación por bloque y de oferta versus asignación, y una tabla por lugar (horario cubierto,
+  personas, auto al cierre).
+- La asignación de cada día, los turnos por persona y quién quedó sin turno (con lo que ofreció).
+- En insumos: las casas-bodega y, si antes se presionó *Ubicar en el mapa*, el mapa (sobre OpenStreetMap) y los
+  tiempos en auto.
+- La configuración usada.
+
+Lleva nombres, pero no teléfonos ni correos (esos están en el planner).
 
 ## Reglas del modelo
 
@@ -60,6 +77,8 @@ Qué busca, en orden de importancia: cubrir bloques, que cada persona tenga al m
 **Mapa y tiempos de traslado**: en insumos, el botón *Ubicar en el mapa* busca las direcciones de los supermercados y
 casas-bodega en OpenStreetMap, las muestra en un mapa y calcula los minutos en auto (servidor público de OSRM).
 Se envían solo direcciones, sin nombres. Si el servicio de rutas no responde, los tiempos se estiman en línea recta.
+Para el mapa del informe se descargan teselas de OpenStreetMap de la zona (sin direcciones ni nombres); si no se
+pueden descargar, el mapa sale sin fondo.
 
 **Rendimiento** (datos ficticios, computador de 4 núcleos): 100 personas y 3 supermercados ≈ 1 s;
 150 personas y 5 supermercados ≈ 7 s; 250 personas y 5 supermercados ≈ 25 s. Antes de llamar al solver se arma
@@ -114,6 +133,7 @@ colectatron/
 ├── bodegas.py             Asignación de casas-bodega
 ├── geo.py                 Direcciones → mapa y tiempos en auto (OpenStreetMap / OSRM)
 ├── reportes.py            Tablas de resultados y planner en Excel
+├── informe.py             Informe en LaTeX con sus figuras (.zip)
 ├── ejemplo.py             Generador de respuestas ficticias
 └── texto.py               Normalización de textos (acentos, emojis)
 tests/                     Pruebas (pytest), incluida una prueba de la app completa

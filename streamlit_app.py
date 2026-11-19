@@ -29,6 +29,7 @@ from colectatron.formulario import (
     leer_tabla,
     valores_de_rol,
 )
+from colectatron.informe import informe_zip
 from colectatron.plantilla_form import (
     resultados_publicados,
     roles_financiamiento,
@@ -541,6 +542,11 @@ def _ubicar(direccion: str, comuna: str) -> tuple[float, float] | None:
     return (punto.lat, punto.lon) if punto else None
 
 
+@st.cache_data(show_spinner=False, max_entries=20)
+def _fondo_mapa(x0: float, x1: float, y0: float, y1: float):
+    return geo.fondo_mapa(x0, x1, y0, y1)
+
+
 def _mapa_de_calor(cob: pd.DataFrame, dia: str) -> alt.Chart:
     datos = cob[cob["dia"] == dia]
     base = alt.Chart(datos).encode(
@@ -575,6 +581,7 @@ with tab_resultados:
             ESTADO["huella_resultado"] = ESTADO.get("huella_entrada")
             ESTADO.pop("minutos", None)
             ESTADO.pop("puntos", None)
+            ESTADO.pop("informe", None)
 
         resultado = ESTADO.get("resultado")
         if resultado is not None:
@@ -610,13 +617,40 @@ with tab_resultados:
                 for a in todos_avisos:
                     st.warning(a)
 
-                st.download_button(
+                slug = config.nombre.lower().replace(" ", "_")
+                c_excel, c_informe = st.columns(2)
+                c_excel.download_button(
                     "📥 Descargar planner (Excel)",
                     planner_excel(config, vols, asignaciones, bodegas_df, todos_avisos),
-                    file_name=f"planner_{config.nombre.lower().replace(' ', '_')}.xlsx",
+                    file_name=f"planner_{slug}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     type="primary",
                 )
+                with c_informe:
+                    if st.button(
+                        "📄 Preparar informe (LaTeX + imágenes)",
+                        help="Un .zip con informe.tex y sus gráficos: ocupación, oferta por bloque, alertas, turnos "
+                        "y, si antes ubicaste el mapa, el mapa y los tiempos de las casas-bodega. "
+                        "Súbelo tal cual a Overleaf (New project → Upload project) o compílalo con pdflatex.",
+                    ):
+                        with st.spinner("Armando el informe…"):
+                            ESTADO["informe"] = informe_zip(
+                                config,
+                                lectura,
+                                resultado,
+                                bodegas_df,
+                                todos_avisos,
+                                ESTADO.get("puntos"),
+                                ESTADO.get("minutos"),
+                                teselas=_fondo_mapa,
+                            )
+                    if ESTADO.get("informe"):
+                        st.download_button(
+                            "📥 Descargar informe (.zip)",
+                            ESTADO["informe"],
+                            file_name=f"informe_{slug}.zip",
+                            mime="application/zip",
+                        )
 
                 st.subheader("Ocupación por bloque")
                 cob = cobertura(config, asignaciones)
@@ -664,6 +698,7 @@ with tab_resultados:
                             for j in range(len(destinos))
                         }
                         ESTADO["puntos"] = {"lugares": puntos_lugar, "casas": puntos_casa, "osrm": real}
+                        ESTADO.pop("informe", None)  # el informe nuevo incluirá el mapa
                         st.rerun()
 
                     puntos = ESTADO.get("puntos")
